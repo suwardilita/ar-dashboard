@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>A/R Dashboard — B2B Collections</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #13131a;
+    --surface2: #1c1c28;
+    --border: #2a2a3d;
+    --text: #e8e8f0;
+    --muted: #7a7a9a;
+    --accent1: #ff6b6b;
+    --accent2: #ffd93d;
+    --accent3: #6bcb77;
+    --accent4: #4d96ff;
+    --accent5: #c77dff;
+    --osa: #4d96ff;
+    --sesa: #ff6b6b;
+    --mso: #6bcb77;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Space Grotesk', sans-serif; min-height: 100vh; }
+
+  /* UPLOAD SCREEN */
+  #upload-screen {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    min-height: 100vh; padding: 2rem;
+    background: radial-gradient(ellipse at 30% 20%, #1a0a2e 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 80%, #0a1a2e 0%, transparent 50%),
+                var(--bg);
+  }
+  .upload-logo { font-family: 'Syne', sans-serif; font-size: 2.8rem; font-weight: 800; margin-bottom: 0.3rem; }
+  .upload-logo span { color: var(--accent4); }
+  .upload-sub { color: var(--muted); margin-bottom: 3rem; font-size: 1.05rem; }
+  .drop-zone {
+    width: 100%; max-width: 520px; border: 2px dashed var(--border);
+    border-radius: 20px; padding: 3.5rem 2rem; text-align: center;
+    cursor: pointer; transition: all 0.3s ease;
+    background: var(--surface);
+    position: relative;
+  }
+  .drop-zone:hover, .drop-zone.drag-over {
+    border-color: var(--accent4); background: rgba(77,150,255,0.05);
+    transform: scale(1.01);
+  }
+  .drop-icon { font-size: 3rem; margin-bottom: 1rem; }
+  .drop-text { color: var(--muted); font-size: 0.95rem; margin-top: 0.5rem; }
+  .drop-btn {
+    margin-top: 1.5rem; background: var(--accent4); color: #fff;
+    border: none; padding: 0.75rem 2rem; border-radius: 50px; font-size: 1rem;
+    cursor: pointer; font-family: 'Space Grotesk', sans-serif; font-weight: 600;
+    transition: all 0.2s; letter-spacing: 0.03em;
+  }
+  .drop-btn:hover { background: #6aaeff; transform: translateY(-2px); box-shadow: 0 8px 25px rgba(77,150,255,0.35); }
+  #file-input { display: none; }
+  .upload-note { color: var(--muted); font-size: 0.82rem; margin-top: 2rem; }
+
+  /* DASHBOARD */
+  #dashboard { display: none; }
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 1.2rem 2rem; background: var(--surface);
+    border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 100;
+    backdrop-filter: blur(10px);
+  }
+  .logo { font-family: 'Syne', sans-serif; font-size: 1.5rem; font-weight: 800; }
+  .logo span { color: var(--accent4); }
+  .topbar-right { display: flex; align-items: center; gap: 1rem; }
+  .data-date { background: var(--surface2); border: 1px solid var(--border); border-radius: 50px; padding: 0.4rem 1rem; font-size: 0.82rem; color: var(--muted); }
+  .data-date strong { color: var(--accent2); }
+  .reload-btn {
+    background: transparent; border: 1px solid var(--border); color: var(--muted);
+    padding: 0.4rem 1rem; border-radius: 50px; font-size: 0.82rem; cursor: pointer;
+    font-family: 'Space Grotesk', sans-serif; transition: all 0.2s;
+  }
+  .reload-btn:hover { border-color: var(--accent4); color: var(--accent4); }
+
+  .main { padding: 1.5rem 2rem; max-width: 1600px; margin: 0 auto; }
+
+  /* CHANNEL FILTER TABS */
+  .filter-row { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.8rem; flex-wrap: wrap; }
+  .filter-label { color: var(--muted); font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.1em; }
+  .channel-tabs { display: flex; gap: 0.5rem; }
+  .ch-tab {
+    padding: 0.45rem 1.2rem; border-radius: 50px; border: 1.5px solid var(--border);
+    background: transparent; color: var(--muted); cursor: pointer;
+    font-family: 'Space Grotesk', sans-serif; font-size: 0.88rem; font-weight: 600;
+    transition: all 0.2s; letter-spacing: 0.04em;
+  }
+  .ch-tab[data-ch="ALL"].active { border-color: var(--text); color: var(--text); background: var(--surface2); }
+  .ch-tab[data-ch="OSA"].active { border-color: var(--osa); color: var(--osa); background: rgba(77,150,255,0.1); }
+  .ch-tab[data-ch="SESA"].active { border-color: var(--sesa); color: var(--sesa); background: rgba(255,107,107,0.1); }
+  .ch-tab[data-ch="MSO"].active { border-color: var(--mso); color: var(--mso); background: rgba(107,203,119,0.1); }
+  .ch-tab:not(.active):hover { border-color: var(--muted); color: var(--text); }
+
+  .salesman-filter { display: flex; align-items: center; gap: 0.5rem; margin-left: auto; }
+  .salesman-filter select {
+    background: var(--surface2); border: 1.5px solid var(--border); color: var(--text);
+    padding: 0.45rem 1rem; border-radius: 50px; font-family: 'Space Grotesk', sans-serif;
+    font-size: 0.88rem; cursor: pointer; outline: none; transition: border-color 0.2s;
+  }
+  .salesman-filter select:focus { border-color: var(--accent4); }
+
+  /* KPI CARDS */
+  .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.8rem; }
+  .kpi-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+    padding: 1.3rem 1.5rem; position: relative; overflow: hidden; transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+    cursor: pointer;
+  }
+  .kpi-card:hover { transform: translateY(-3px); box-shadow: 0 8px 30px rgba(0,0,0,0.3); }
+  .kpi-card.blue:hover { border-color: rgba(77,150,255,0.4); }
+  .kpi-card.red:hover { border-color: rgba(255,107,107,0.4); }
+  .kpi-card.yellow:hover { border-color: rgba(255,217,61,0.4); }
+  .kpi-card.green:hover { border-color: rgba(107,203,119,0.4); }
+  .kpi-card.purple:hover { border-color: rgba(199,125,255,0.4); }
+  .kpi-card.active-filter.blue { border-color: var(--accent4); background: rgba(77,150,255,0.08); box-shadow: 0 0 0 2px rgba(77,150,255,0.25); }
+  .kpi-card.active-filter.red { border-color: var(--accent1); background: rgba(255,107,107,0.08); box-shadow: 0 0 0 2px rgba(255,107,107,0.25); }
+  .kpi-card.active-filter.yellow { border-color: var(--accent2); background: rgba(255,217,61,0.08); box-shadow: 0 0 0 2px rgba(255,217,61,0.25); }
+  .kpi-card.active-filter.green { border-color: var(--accent3); background: rgba(107,203,119,0.08); box-shadow: 0 0 0 2px rgba(107,203,119,0.25); }
+  .kpi-card.active-filter.purple { border-color: var(--accent5); background: rgba(199,125,255,0.08); box-shadow: 0 0 0 2px rgba(199,125,255,0.25); }
+  .kpi-click-hint { font-size: 0.68rem; color: var(--muted); margin-top: 0.55rem; opacity: 0; transition: opacity 0.2s; }
+  .kpi-card:hover .kpi-click-hint { opacity: 1; }
+  .kpi-card.active-filter .kpi-click-hint { opacity: 1; }
+  .kpi-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; border-radius: 16px 16px 0 0; }
+  .kpi-card.blue::before { background: var(--accent4); }
+  .kpi-card.red::before { background: var(--accent1); }
+  .kpi-card.yellow::before { background: var(--accent2); }
+  .kpi-card.green::before { background: var(--accent3); }
+  .kpi-card.purple::before { background: var(--accent5); }
+  .kpi-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 0.6rem; }
+  .kpi-value { font-family: 'Syne', sans-serif; font-size: 1.7rem; font-weight: 700; line-height: 1; }
+  .kpi-card.blue .kpi-value { color: var(--accent4); }
+  .kpi-card.red .kpi-value { color: var(--accent1); }
+  .kpi-card.yellow .kpi-value { color: var(--accent2); }
+  .kpi-card.green .kpi-value { color: var(--accent3); }
+  .kpi-card.purple .kpi-value { color: var(--accent5); }
+  .kpi-sub { font-size: 0.78rem; color: var(--muted); margin-top: 0.4rem; }
+  .kpi-badge {
+    position: absolute; top: 1rem; right: 1rem; font-size: 1.6rem; opacity: 0.15;
+  }
+
+  /* SECTION GRID */
+  .section-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; margin-bottom: 1.2rem; }
+  @media (max-width: 1000px) { .section-grid { grid-template-columns: 1fr; } }
+
+  .card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+    padding: 1.3rem 1.5rem;
+  }
+  .card-title {
+    font-family: 'Syne', sans-serif; font-size: 0.95rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted);
+    margin-bottom: 1.2rem; display: flex; align-items: center; gap: 0.5rem;
+  }
+  .card-title .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+
+  /* COLLECTION TIMELINE */
+  .timeline-bars { display: flex; flex-direction: column; gap: 0.7rem; }
+  .timeline-item { display: flex; align-items: center; gap: 1rem; }
+  .timeline-lbl { width: 120px; font-size: 0.82rem; color: var(--muted); flex-shrink: 0; }
+  .bar-track { flex: 1; background: var(--surface2); border-radius: 4px; height: 24px; overflow: hidden; position: relative; }
+  .bar-fill { height: 100%; border-radius: 4px; transition: width 0.6s ease; display: flex; align-items: center; padding-left: 8px; font-size: 0.78rem; font-weight: 600; white-space: nowrap; overflow: hidden; }
+  .bar-today { background: linear-gradient(90deg, var(--accent4), #a0c4ff); }
+  .bar-3d { background: linear-gradient(90deg, #6bcb77, #a8e6cf); }
+  .bar-week { background: linear-gradient(90deg, var(--accent2), #ffe57a); }
+  .bar-14d { background: linear-gradient(90deg, var(--accent5), #e0aaff); }
+  .bar-30d { background: linear-gradient(90deg, var(--accent1), #ffb3b3); }
+  .bar-overdue { background: linear-gradient(90deg, #ff4040, #ff8080); }
+  .timeline-amount { width: 130px; text-align: right; font-size: 0.82rem; font-weight: 600; flex-shrink: 0; }
+
+  /* SALESMAN SCORES */
+  .salesman-list { display: flex; flex-direction: column; gap: 0.8rem; }
+  .salesman-row {
+    display: flex; align-items: center; gap: 1rem;
+    background: var(--surface2); border-radius: 12px; padding: 0.8rem 1rem;
+    border: 1px solid var(--border); transition: border-color 0.2s;
+  }
+  .salesman-row:hover { border-color: var(--accent4); }
+  .salesman-rank { font-family: 'Syne', sans-serif; font-size: 0.85rem; font-weight: 800; color: var(--muted); width: 20px; }
+  .salesman-name { flex: 1; font-weight: 600; font-size: 0.9rem; }
+  .score-bar-wrap { width: 140px; background: var(--bg); border-radius: 4px; height: 8px; overflow: hidden; }
+  .score-bar { height: 100%; border-radius: 4px; transition: width 0.6s ease; }
+  .salesman-score { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 1rem; width: 55px; text-align: right; }
+  .salesman-ch { font-size: 0.72rem; padding: 0.2rem 0.5rem; border-radius: 4px; font-weight: 600; }
+  .ch-osa { background: rgba(77,150,255,0.15); color: var(--osa); }
+  .ch-sesa { background: rgba(255,107,107,0.15); color: var(--sesa); }
+  .ch-mso { background: rgba(107,203,119,0.15); color: var(--mso); }
+  .trophy { font-size: 1rem; }
+
+  /* AGING BUCKETS */
+  .aging-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 0.6rem; }
+  .aging-bucket {
+    background: var(--surface2); border-radius: 10px; padding: 0.9rem 0.7rem;
+    text-align: center; border: 1px solid var(--border);
+  }
+  .aging-bucket-lbl { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); margin-bottom: 0.5rem; }
+  .aging-bucket-val { font-family: 'Syne', sans-serif; font-size: 1rem; font-weight: 700; }
+  .aging-bucket-count { font-size: 0.7rem; color: var(--muted); margin-top: 0.3rem; }
+
+  /* DETAILS TABLE */
+  .details-section { margin-top: 1.2rem; }
+  .details-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+  .details-title { font-family: 'Syne', sans-serif; font-size: 0.95rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+  .search-box {
+    background: var(--surface2); border: 1.5px solid var(--border); color: var(--text);
+    padding: 0.45rem 1rem; border-radius: 50px; font-family: 'Space Grotesk', sans-serif;
+    font-size: 0.85rem; outline: none; width: 250px; transition: border-color 0.2s;
+  }
+  .search-box:focus { border-color: var(--accent4); }
+  .table-wrap { overflow-x: auto; border-radius: 12px; border: 1px solid var(--border); }
+  table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+  thead th {
+    background: var(--surface2); padding: 0.75rem 1rem; text-align: left;
+    font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted);
+    white-space: nowrap; cursor: pointer; user-select: none;
+  }
+  thead th:hover { color: var(--text); }
+  tbody tr { border-top: 1px solid var(--border); transition: background 0.15s; }
+  tbody tr:hover { background: var(--surface2); }
+  td { padding: 0.65rem 1rem; white-space: nowrap; }
+  .status-badge {
+    padding: 0.2rem 0.6rem; border-radius: 4px; font-size: 0.72rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.05em;
+  }
+  .s-overdue { background: rgba(255,64,64,0.15); color: #ff6b6b; }
+  .s-today { background: rgba(77,150,255,0.15); color: var(--accent4); }
+  .s-week { background: rgba(255,217,61,0.15); color: var(--accent2); }
+  .s-14d { background: rgba(199,125,255,0.15); color: var(--accent5); }
+  .s-30d { background: rgba(107,203,119,0.15); color: var(--accent3); }
+  .amount-cell { font-weight: 600; font-family: 'Syne', sans-serif; }
+  .pagination { display: flex; align-items: center; gap: 0.5rem; justify-content: flex-end; margin-top: 1rem; }
+  .pg-btn {
+    background: var(--surface2); border: 1px solid var(--border); color: var(--muted);
+    width: 32px; height: 32px; border-radius: 8px; cursor: pointer;
+    font-family: 'Space Grotesk', sans-serif; font-size: 0.82rem; transition: all 0.15s;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .pg-btn.active { background: var(--accent4); border-color: var(--accent4); color: #fff; }
+  .pg-btn:hover:not(.active) { border-color: var(--accent4); color: var(--text); }
+  .pg-info { font-size: 0.78rem; color: var(--muted); margin-right: auto; }
+
+  /* CHANNEL BAR */
+  .channel-breakdown { display: flex; gap: 0; height: 10px; border-radius: 5px; overflow: hidden; margin-bottom: 0.5rem; }
+  .ch-seg { transition: flex 0.5s ease; }
+  .ch-seg-labels { display: flex; justify-content: space-between; }
+  .ch-seg-lbl { font-size: 0.72rem; color: var(--muted); }
+
+  /* ACTIVE FILTER PILL */
+  .active-filter-pill {
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 50px; padding: 0.3rem 0.8rem; font-size: 0.78rem;
+    color: var(--text); animation: popIn 0.2s ease;
+  }
+  .active-filter-pill .pill-x {
+    cursor: pointer; color: var(--muted); font-size: 0.9rem; line-height: 1;
+    margin-left: 2px; transition: color 0.15s;
+  }
+  .active-filter-pill .pill-x:hover { color: var(--accent1); }
+  @keyframes popIn { from { transform: scale(0.85); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+  /* TABLE FILTERS */
+  .table-filters { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
+  .table-filter-select {
+    background: var(--surface2); border: 1.5px solid var(--border); color: var(--text);
+    padding: 0.38rem 0.8rem; border-radius: 50px; font-family: 'Space Grotesk', sans-serif;
+    font-size: 0.82rem; cursor: pointer; outline: none; transition: border-color 0.2s;
+  }
+  .table-filter-select:focus { border-color: var(--accent4); }
+  .table-filter-select.has-filter { border-color: var(--accent4); color: var(--accent4); }
+  .dl-btn {
+    background: var(--accent3); color: #0a0a0f; border: none;
+    padding: 0.38rem 1rem; border-radius: 50px; font-family: 'Space Grotesk', sans-serif;
+    font-size: 0.82rem; font-weight: 700; cursor: pointer; letter-spacing: 0.03em;
+    transition: all 0.2s; white-space: nowrap;
+  }
+  .dl-btn:hover { background: #8de897; transform: translateY(-1px); box-shadow: 0 4px 15px rgba(107,203,119,0.35); }
+  .dl-btn:active { transform: translateY(0); }
+
+  .no-data { text-align: center; color: var(--muted); padding: 3rem; font-size: 0.9rem; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+  .fade-in { animation: fadeIn 0.4s ease forwards; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+</style>
+</head>
+<body>
+
+<!-- UPLOAD SCREEN -->
+<div id="upload-screen">
+  <div class="upload-logo">A<span>/</span>R Flow</div>
+  <div class="upload-sub">B2B Collections Intelligence Dashboard</div>
+  <div class="drop-zone" id="drop-zone">
+    <div class="drop-icon">📊</div>
+    <div style="font-size:1.1rem;font-weight:600;">Drop your Accurate export here</div>
+    <div class="drop-text">Upload the latest .xlsx file from Accurate (Append1 sheet)</div>
+    <button class="drop-btn" onclick="document.getElementById('file-input').click()">Choose File</button>
+    <input type="file" id="file-input" accept=".xlsx,.xls">
+  </div>
+  <div class="upload-note">Your data stays local — nothing is uploaded to any server.</div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="dashboard">
+  <div class="topbar">
+    <div class="logo">A<span>/</span>R Flow</div>
+    <div class="topbar-right">
+      <div class="data-date">Data as of: <strong id="data-date-lbl">—</strong></div>
+      <button class="reload-btn" onclick="resetToUpload()">↑ Upload New File</button>
+    </div>
+  </div>
+
+  <div class="main">
+    <!-- FILTERS -->
+    <div class="filter-row">
+      <span class="filter-label">Channel</span>
+      <div class="channel-tabs">
+        <button class="ch-tab active" data-ch="ALL" onclick="setChannel('ALL')">All</button>
+        <button class="ch-tab" data-ch="OSA" onclick="setChannel('OSA')">OSA</button>
+        <button class="ch-tab" data-ch="SESA" onclick="setChannel('SESA')">SESA</button>
+        <button class="ch-tab" data-ch="MSO" onclick="setChannel('MSO')">MSO</button>
+      </div>
+      <div class="salesman-filter">
+        <span class="filter-label">Salesman</span>
+        <select id="salesman-select" onchange="setSalesman(this.value)">
+          <option value="ALL">All Salesmen</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- KPIs -->
+    <div class="kpi-grid" id="kpi-grid">
+      <div class="kpi-card blue" id="kpi-card-all" onclick="setKpiFilter('all')" title="Show all invoices">
+        <div class="kpi-badge">💰</div>
+        <div class="kpi-label">Total A/R</div>
+        <div class="kpi-value" id="kpi-total">—</div>
+        <div class="kpi-sub" id="kpi-total-inv">— invoices</div>
+        <div class="kpi-click-hint">Click to show all invoices</div>
+      </div>
+      <div class="kpi-card red" id="kpi-card-overdue" onclick="setKpiFilter('overdue')" title="Filter: Overdue invoices">
+        <div class="kpi-badge">🔴</div>
+        <div class="kpi-label">Overdue</div>
+        <div class="kpi-value" id="kpi-overdue">—</div>
+        <div class="kpi-sub" id="kpi-overdue-inv">— invoices overdue</div>
+        <div class="kpi-click-hint">↓ Click to filter table</div>
+      </div>
+      <div class="kpi-card yellow" id="kpi-card-today" onclick="setKpiFilter('today')" title="Filter: Due today">
+        <div class="kpi-badge">📅</div>
+        <div class="kpi-label">Due Today</div>
+        <div class="kpi-value" id="kpi-today">—</div>
+        <div class="kpi-sub" id="kpi-today-inv">— invoices</div>
+        <div class="kpi-click-hint">↓ Click to filter table</div>
+      </div>
+      <div class="kpi-card green" id="kpi-card-week" onclick="setKpiFilter('week')" title="Filter: Due this week">
+        <div class="kpi-badge">📆</div>
+        <div class="kpi-label">Due This Week</div>
+        <div class="kpi-value" id="kpi-week">—</div>
+        <div class="kpi-sub" id="kpi-week-inv">— invoices</div>
+        <div class="kpi-click-hint">↓ Click to filter table</div>
+      </div>
+      <div class="kpi-card purple" id="kpi-card-rate" style="cursor:default;">
+        <div class="kpi-badge">📊</div>
+        <div class="kpi-label">Collection Rate</div>
+        <div class="kpi-value" id="kpi-rate">—</div>
+        <div class="kpi-sub">of total A/R is current</div>
+      </div>
+    </div>
+
+    <!-- CHARTS ROW -->
+    <div class="section-grid">
+      <!-- COLLECTION TIMELINE -->
+      <div class="card">
+        <div class="card-title"><span class="dot" style="background:var(--accent4)"></span>Collection Timeline</div>
+        <div class="timeline-bars" id="timeline-bars"></div>
+      </div>
+
+      <!-- SALESMAN LEADERBOARD -->
+      <div class="card">
+        <div class="card-title"><span class="dot" style="background:var(--accent2)"></span>Salesman Collection Score</div>
+        <div class="salesman-list" id="salesman-list"></div>
+      </div>
+    </div>
+
+    <!-- AGING + CHANNEL -->
+    <div class="section-grid">
+      <!-- AGING BUCKETS -->
+      <div class="card">
+        <div class="card-title"><span class="dot" style="background:var(--accent1)"></span>Aging Buckets (IDR)</div>
+        <div class="aging-grid" id="aging-grid"></div>
+      </div>
+
+      <!-- CHANNEL BREAKDOWN -->
+      <div class="card">
+        <div class="card-title"><span class="dot" style="background:var(--accent3)"></span>Channel Breakdown</div>
+        <div id="channel-breakdown-content"></div>
+      </div>
+    </div>
+
+    <!-- DETAILS TABLE -->
+    <div class="details-section card">
+      <div class="details-header" style="flex-wrap:wrap;gap:0.7rem;">
+        <div style="display:flex;align-items:center;gap:0.8rem;flex-wrap:wrap;flex:1;">
+          <div class="details-title">Invoice Details</div>
+          <div id="kpi-active-pill"></div>
+        </div>
+        <div class="table-filters">
+          <select class="table-filter-select" id="tbl-salesman-select" onchange="setTableSalesman(this.value)">
+            <option value="ALL">All Salesmen</option>
+          </select>
+          <select class="table-filter-select" id="tbl-status-select" onchange="setTableStatus(this.value)">
+            <option value="ALL">All Statuses</option>
+            <option value="Overdue">Overdue</option>
+            <option value="Due This Week">Due This Week</option>
+            <option value="Due in 14d">Due in 14d</option>
+            <option value="Due in 30d">Due in 30d</option>
+          </select>
+          <input class="search-box" type="text" id="search-box" placeholder="🔍  Search..." oninput="renderTable()" style="width:180px;">
+          <button class="dl-btn" onclick="downloadTable()" title="Download current view as Excel">
+            ⬇ Export
+          </button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th onclick="sortTable('Channel')">Channel ↕</th>
+              <th onclick="sortTable('Salesmen')">Salesman ↕</th>
+              <th onclick="sortTable('Pelanggan')">Customer ↕</th>
+              <th onclick="sortTable('Nomor #')">Invoice ↕</th>
+              <th onclick="sortTable('Jatuh Tempo')">Due Date ↕</th>
+              <th onclick="sortTable('Days Until Due')">Days ↕</th>
+              <th onclick="sortTable('Piutang')">Amount (IDR) ↕</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="table-body"></tbody>
+        </table>
+      </div>
+      <div style="display:flex;align-items:center;margin-top:1rem;gap:1rem;flex-wrap:wrap;">
+        <div class="pg-info" id="pg-info"></div>
+        <div class="pagination" id="pagination"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let allData = [];
+let filteredData = [];
+let channel = 'ALL';
+let salesman = 'ALL';
+let kpiFilter = 'all';       // 'all' | 'overdue' | 'today' | 'week'
+let tableSalesman = 'ALL';   // table-level salesman filter
+let tableStatus = 'ALL';     // table-level status filter
+let sortKey = 'Days Until Due';
+let sortDir = 1;
+let page = 0;
+const PAGE_SIZE = 15;
+let searchQ = '';
+
+// ─── FILE HANDLING ───────────────────────────────────────────────
+document.getElementById('file-input').addEventListener('change', e => {
+  if (e.target.files[0]) loadFile(e.target.files[0]);
+});
+const dz = document.getElementById('drop-zone');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+dz.addEventListener('drop', e => {
+  e.preventDefault(); dz.classList.remove('drag-over');
+  if (e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]);
+});
+
+function loadFile(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    const wb = XLSX.read(e.target.result, { type: 'array', cellDates: true });
+    const sheet = wb.Sheets['Append1'] || wb.Sheets[wb.SheetNames[0]];
+    const raw = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+    processData(raw, file.name);
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function processData(raw, filename) {
+  allData = raw.map(r => {
+    const due = r['Jatuh Tempo'] ? new Date(r['Jatuh Tempo']) : null;
+    const today = new Date(); today.setHours(0,0,0,0);
+    const days = due ? Math.round((due - today) / 86400000) : null;
+    let status = r['Status'] || '';
+    if (!status && days !== null) {
+      if (days < 0) status = 'Overdue';
+      else if (days === 0) status = 'Due Today';
+      else if (days <= 7) status = 'Due This Week';
+      else if (days <= 14) status = 'Due in 14d';
+      else status = 'Due in 30d';
+    }
+    return {
+      Channel: String(r['Channel'] || '').trim(),
+      Salesmen: String(r['Salesmen'] || '').trim(),
+      Pelanggan: String(r['Pelanggan'] || '').trim(),
+      'Nomor #': String(r['Nomor #'] || '').trim(),
+      Tanggal: r['Tanggal'] ? new Date(r['Tanggal']) : null,
+      'Jatuh Tempo': due,
+      Piutang: parseFloat(r['Piutang']) || 0,
+      'Blm Tempo': parseFloat(r['Blm Tempo']) || 0,
+      '1 - 30': parseFloat(r['1 - 30']) || 0,
+      '31 - 60': parseFloat(r['31 - 60']) || 0,
+      '61 - 90': parseFloat(r['61 - 90']) || 0,
+      '91 - 120': parseFloat(r['91 - 120']) || 0,
+      '> 120': parseFloat(r['> 120']) || 0,
+      'Days Until Due': days,
+      Status: status,
+      'Is Overdue?': days !== null && days < 0 ? 1 : 0,
+      'Overdue Amount': (days !== null && days < 0) ? (parseFloat(r['Piutang']) || 0) : 0,
+    };
+  }).filter(r => r.Piutang > 0);
+
+  document.getElementById('data-date-lbl').textContent = new Date().toLocaleDateString('id-ID', {day:'2-digit',month:'short',year:'numeric'});
+  populateSalesmanFilter();
+  document.getElementById('upload-screen').style.display = 'none';
+  document.getElementById('dashboard').style.display = 'block';
+  applyFilters();
+}
+
+function populateSalesmanFilter() {
+  const names = [...new Set(allData.map(r => r.Salesmen))].sort();
+  // Top-level salesman filter
+  const sel = document.getElementById('salesman-select');
+  sel.innerHTML = '<option value="ALL">All Salesmen</option>';
+  names.forEach(n => { const o = document.createElement('option'); o.value = n; o.textContent = n; sel.appendChild(o); });
+  // Table-level salesman filter
+  const tbl = document.getElementById('tbl-salesman-select');
+  tbl.innerHTML = '<option value="ALL">All Salesmen</option>';
+  names.forEach(n => { const o = document.createElement('option'); o.value = n; o.textContent = n; tbl.appendChild(o); });
+}
+
+function resetToUpload() {
+  document.getElementById('upload-screen').style.display = 'flex';
+  document.getElementById('dashboard').style.display = 'none';
+  document.getElementById('file-input').value = '';
+  channel = 'ALL'; salesman = 'ALL'; kpiFilter = 'all'; tableSalesman = 'ALL'; tableStatus = 'ALL';
+}
+
+// ─── FILTERS ─────────────────────────────────────────────────────
+function setChannel(ch) {
+  channel = ch;
+  document.querySelectorAll('.ch-tab').forEach(b => b.classList.toggle('active', b.dataset.ch === ch));
+  salesman = 'ALL';
+  kpiFilter = 'all';
+  tableSalesman = 'ALL';
+  tableStatus = 'ALL';
+  // Repopulate both salesman dropdowns for selected channel
+  const names = [...new Set(allData.filter(r => ch === 'ALL' || r.Channel === ch).map(r => r.Salesmen))].sort();
+  ['salesman-select','tbl-salesman-select'].forEach(id => {
+    const sel = document.getElementById(id);
+    sel.innerHTML = '<option value="ALL">All Salesmen</option>';
+    names.forEach(n => { const o = document.createElement('option'); o.value = n; o.textContent = n; sel.appendChild(o); });
+    sel.value = 'ALL';
+  });
+  document.getElementById('tbl-status-select').value = 'ALL';
+  applyFilters();
+}
+function setSalesman(sm) { salesman = sm; kpiFilter = 'all'; applyFilters(); }
+function setTableSalesman(sm) {
+  tableSalesman = sm;
+  document.getElementById('tbl-salesman-select').classList.toggle('has-filter', sm !== 'ALL');
+  page = 0; renderTable();
+}
+function setTableStatus(st) {
+  tableStatus = st;
+  document.getElementById('tbl-status-select').classList.toggle('has-filter', st !== 'ALL');
+  page = 0; renderTable();
+}
+function setKpiFilter(f) {
+  if (kpiFilter === f && f !== 'all') { f = 'all'; } // toggle off
+  kpiFilter = f;
+  // Update card active states
+  ['all','overdue','today','week'].forEach(k => {
+    const el = document.getElementById('kpi-card-' + k);
+    if (el) el.classList.toggle('active-filter', k === f);
+  });
+  page = 0; renderTable();
+  // Scroll to table
+  document.querySelector('.details-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function applyFilters() {
+  filteredData = allData.filter(r => {
+    if (channel !== 'ALL' && r.Channel !== channel) return false;
+    if (salesman !== 'ALL' && r.Salesmen !== salesman) return false;
+    return true;
+  });
+  kpiFilter = 'all';
+  tableSalesman = 'ALL';
+  tableStatus = 'ALL';
+  document.getElementById('tbl-salesman-select').value = 'ALL';
+  document.getElementById('tbl-salesman-select').classList.remove('has-filter');
+  document.getElementById('tbl-status-select').value = 'ALL';
+  document.getElementById('tbl-status-select').classList.remove('has-filter');
+  ['all','overdue','today','week'].forEach(k => {
+    const el = document.getElementById('kpi-card-' + k);
+    if (el) el.classList.remove('active-filter');
+  });
+  page = 0;
+  renderAll();
+}
+
+// ─── RENDER ──────────────────────────────────────────────────────
+function renderAll() {
+  renderKPIs();
+  renderTimeline();
+  renderSalesmen();
+  renderAging();
+  renderChannelBreakdown();
+  renderTable();
+}
+
+function fmt(n) {
+  if (n >= 1e9) return 'Rp ' + (n/1e9).toFixed(2) + 'B';
+  if (n >= 1e6) return 'Rp ' + (n/1e6).toFixed(1) + 'M';
+  if (n >= 1e3) return 'Rp ' + (n/1e3).toFixed(0) + 'K';
+  return 'Rp ' + n.toFixed(0);
+}
+function fmtFull(n) { return 'Rp ' + Math.round(n).toLocaleString('id-ID'); }
+function fmtDate(d) { return d ? d.toLocaleDateString('id-ID', {day:'2-digit',month:'short',year:'numeric'}) : '-'; }
+
+function renderKPIs() {
+  const total = filteredData.reduce((s,r) => s + r.Piutang, 0);
+  const overdue = filteredData.filter(r => r['Is Overdue?']).reduce((s,r) => s + r.Piutang, 0);
+  const todayData = filteredData.filter(r => r['Days Until Due'] === 0);
+  const weekData = filteredData.filter(r => r['Days Until Due'] >= 0 && r['Days Until Due'] <= 7);
+  const current = total - overdue;
+  document.getElementById('kpi-total').textContent = fmt(total);
+  document.getElementById('kpi-total-inv').textContent = filteredData.length + ' invoices';
+  document.getElementById('kpi-overdue').textContent = fmt(overdue);
+  document.getElementById('kpi-overdue-inv').textContent = filteredData.filter(r => r['Is Overdue?']).length + ' invoices overdue';
+  document.getElementById('kpi-today').textContent = fmt(todayData.reduce((s,r)=>s+r.Piutang,0));
+  document.getElementById('kpi-today-inv').textContent = todayData.length + ' invoices';
+  document.getElementById('kpi-week').textContent = fmt(weekData.reduce((s,r)=>s+r.Piutang,0));
+  document.getElementById('kpi-week-inv').textContent = weekData.length + ' invoices';
+  const rate = total > 0 ? (current/total*100).toFixed(1) : 0;
+  document.getElementById('kpi-rate').textContent = rate + '%';
+}
+
+function renderTimeline() {
+  const total = filteredData.reduce((s,r) => s + r.Piutang, 0) || 1;
+  const buckets = [
+    { lbl: 'Due Today', filter: r => r['Days Until Due'] === 0, cls: 'bar-today' },
+    { lbl: 'In 3 Days', filter: r => r['Days Until Due'] > 0 && r['Days Until Due'] <= 3, cls: 'bar-3d' },
+    { lbl: 'This Week', filter: r => r['Days Until Due'] > 3 && r['Days Until Due'] <= 7, cls: 'bar-week' },
+    { lbl: 'In 14 Days', filter: r => r['Days Until Due'] > 7 && r['Days Until Due'] <= 14, cls: 'bar-14d' },
+    { lbl: 'In 30 Days', filter: r => r['Days Until Due'] > 14 && r['Days Until Due'] <= 30, cls: 'bar-30d' },
+    { lbl: 'Overdue', filter: r => r['Days Until Due'] < 0 || r['Is Overdue?'], cls: 'bar-overdue' },
+  ];
+  const maxPct = 80;
+  document.getElementById('timeline-bars').innerHTML = buckets.map(b => {
+    const rows = filteredData.filter(b.filter);
+    const amt = rows.reduce((s,r)=>s+r.Piutang,0);
+    const pct = Math.max(2, (amt/total*100));
+    const barW = Math.min(pct, maxPct);
+    return `<div class="timeline-item">
+      <div class="timeline-lbl">${b.lbl}</div>
+      <div class="bar-track"><div class="bar-fill ${b.cls}" style="width:${barW}%">${rows.length} inv</div></div>
+      <div class="timeline-amount">${fmt(amt)}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderSalesmen() {
+  // Use the full allData filtered by channel only for scoring
+  const channelData = allData.filter(r => channel === 'ALL' || r.Channel === channel);
+  const names = [...new Set(channelData.map(r => r.Salesmen))];
+  const scores = names.map(name => {
+    const rows = channelData.filter(r => r.Salesmen === name);
+    const total = rows.reduce((s,r)=>s+r.Piutang,0);
+    const overdue = rows.filter(r=>r['Is Overdue?']).reduce((s,r)=>s+r.Piutang,0);
+    const score = total > 0 ? Math.round((total-overdue)/total*100) : 0;
+    const channels = [...new Set(rows.map(r=>r.Channel))];
+    return { name, score, total, overdue, channels };
+  }).sort((a,b) => b.score - a.score);
+
+  const emojis = ['🏆','🥈','🥉'];
+  document.getElementById('salesman-list').innerHTML = scores.map((s, i) => {
+    const color = s.score >= 80 ? 'var(--accent3)' : s.score >= 50 ? 'var(--accent2)' : 'var(--accent1)';
+    const chBadges = s.channels.map(c => `<span class="salesman-ch ch-${c.toLowerCase()}">${c}</span>`).join(' ');
+    return `<div class="salesman-row">
+      <div class="salesman-rank">${emojis[i] || (i+1)}</div>
+      <div>
+        <div class="salesman-name">${s.name}</div>
+        <div style="display:flex;gap:4px;margin-top:3px;">${chBadges}</div>
+      </div>
+      <div style="flex:1;margin:0 1rem;">
+        <div class="score-bar-wrap"><div class="score-bar" style="width:${s.score}%;background:${color}"></div></div>
+        <div style="font-size:0.7rem;color:var(--muted);margin-top:3px;">${fmt(s.total)} total · ${fmt(s.overdue)} overdue</div>
+      </div>
+      <div class="salesman-score" style="color:${color}">${s.score}%</div>
+    </div>`;
+  }).join('');
+}
+
+function renderAging() {
+  const buckets = [
+    { lbl: 'Current', key: 'Blm Tempo', color: 'var(--accent3)' },
+    { lbl: '1–30d', key: '1 - 30', color: 'var(--accent4)' },
+    { lbl: '31–60d', key: '31 - 60', color: 'var(--accent5)' },
+    { lbl: '61–90d', key: '61 - 90', color: 'var(--accent2)' },
+    { lbl: '91–120d', key: '91 - 120', color: 'var(--accent1)' },
+    { lbl: '>120d', key: '> 120', color: '#ff4040' },
+  ];
+  document.getElementById('aging-grid').innerHTML = buckets.map(b => {
+    const amt = filteredData.reduce((s,r)=>s+(r[b.key]||0),0);
+    const cnt = filteredData.filter(r=>(r[b.key]||0)>0).length;
+    return `<div class="aging-bucket">
+      <div class="aging-bucket-lbl">${b.lbl}</div>
+      <div class="aging-bucket-val" style="color:${b.color}">${fmt(amt)}</div>
+      <div class="aging-bucket-count">${cnt} inv</div>
+    </div>`;
+  }).join('');
+}
+
+function renderChannelBreakdown() {
+  const channels = ['OSA','SESA','MSO'];
+  const colors = { OSA: 'var(--osa)', SESA: 'var(--sesa)', MSO: 'var(--mso)' };
+  const data = channels.map(c => ({
+    ch: c, amt: allData.filter(r=>r.Channel===c).reduce((s,r)=>s+r.Piutang,0),
+    cnt: allData.filter(r=>r.Channel===c).length,
+    overdue: allData.filter(r=>r.Channel===c&&r['Is Overdue?']).reduce((s,r)=>s+r.Piutang,0)
+  }));
+  const total = data.reduce((s,d)=>s+d.amt,0)||1;
+  const bars = data.map(d=>`<div class="ch-seg" style="flex:${d.amt};background:${colors[d.ch]}"></div>`).join('');
+  const rows = data.map(d => {
+    const pct = (d.amt/total*100).toFixed(1);
+    const score = d.amt > 0 ? ((d.amt-d.overdue)/d.amt*100).toFixed(1) : 0;
+    const scoreColor = score >= 80 ? 'var(--accent3)' : score >= 50 ? 'var(--accent2)' : 'var(--accent1)';
+    return `<div style="display:flex;align-items:center;gap:1rem;padding:0.7rem 0;border-top:1px solid var(--border);">
+      <div style="display:flex;align-items:center;gap:0.5rem;width:70px;">
+        <div style="width:10px;height:10px;border-radius:2px;background:${colors[d.ch]}"></div>
+        <span style="font-weight:700;font-size:0.9rem;">${d.ch}</span>
+      </div>
+      <div style="flex:1;">
+        <div style="font-size:0.82rem;font-weight:600;">${fmt(d.amt)} <span style="color:var(--muted);font-weight:400;">(${pct}%)</span></div>
+        <div style="font-size:0.72rem;color:var(--muted);">${d.cnt} invoices · ${fmt(d.overdue)} overdue</div>
+      </div>
+      <div style="font-family:'Syne',sans-serif;font-weight:700;color:${scoreColor};font-size:1rem;">${score}%</div>
+    </div>`;
+  }).join('');
+  document.getElementById('channel-breakdown-content').innerHTML = `
+    <div class="channel-breakdown">${bars}</div>
+    ${rows}
+  `;
+}
+
+function sortTable(key) {
+  if (sortKey === key) sortDir *= -1;
+  else { sortKey = key; sortDir = 1; }
+  page = 0; renderTable();
+}
+
+function renderTable() {
+  searchQ = document.getElementById('search-box').value.toLowerCase();
+
+  // KPI filter
+  const kpiLabels = { all: null, overdue: 'Overdue', today: 'Due Today', week: 'Due This Week (0–7d)' };
+  const pillEl = document.getElementById('kpi-active-pill');
+  if (kpiFilter !== 'all') {
+    pillEl.innerHTML = `<span class="active-filter-pill">🎯 ${kpiLabels[kpiFilter]} <span class="pill-x" onclick="setKpiFilter('all')">✕</span></span>`;
+  } else {
+    pillEl.innerHTML = '';
+  }
+
+  let data = filteredData.filter(r => {
+    // KPI filter
+    if (kpiFilter === 'overdue' && !r['Is Overdue?']) return false;
+    if (kpiFilter === 'today' && r['Days Until Due'] !== 0) return false;
+    if (kpiFilter === 'week' && !(r['Days Until Due'] >= 0 && r['Days Until Due'] <= 7)) return false;
+    // Table-level filters
+    if (tableSalesman !== 'ALL' && r.Salesmen !== tableSalesman) return false;
+    if (tableStatus !== 'ALL' && r.Status !== tableStatus) return false;
+    // Search
+    if (searchQ && !r.Pelanggan.toLowerCase().includes(searchQ) &&
+        !r['Nomor #'].toLowerCase().includes(searchQ) &&
+        !r.Salesmen.toLowerCase().includes(searchQ)) return false;
+    return true;
+  });
+
+  data = [...data].sort((a,b) => {
+    let av = a[sortKey], bv = b[sortKey];
+    if (av instanceof Date) av = av.getTime();
+    if (bv instanceof Date) bv = bv.getTime();
+    if (typeof av === 'string') return av.localeCompare(bv) * sortDir;
+    return ((av||0) - (bv||0)) * sortDir;
+  });
+
+  const total = data.length;
+  const pages = Math.ceil(total / PAGE_SIZE);
+  if (page >= pages) page = Math.max(0, pages-1);
+  const slice = data.slice(page*PAGE_SIZE, (page+1)*PAGE_SIZE);
+
+  const statusClass = s => {
+    if (s === 'Overdue') return 's-overdue';
+    if (s === 'Due Today') return 's-today';
+    if (s === 'Due This Week') return 's-week';
+    if (s === 'Due in 14d') return 's-14d';
+    return 's-30d';
+  };
+  const chColor = c => c === 'OSA' ? 'var(--osa)' : c === 'SESA' ? 'var(--sesa)' : 'var(--mso)';
+
+  document.getElementById('table-body').innerHTML = slice.length ? slice.map(r => `
+    <tr>
+      <td><span style="color:${chColor(r.Channel)};font-weight:700;">${r.Channel}</span></td>
+      <td>${r.Salesmen}</td>
+      <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;" title="${r.Pelanggan}">${r.Pelanggan}</td>
+      <td style="color:var(--muted)">${r['Nomor #']}</td>
+      <td>${fmtDate(r['Jatuh Tempo'])}</td>
+      <td style="color:${r['Days Until Due'] < 0 ? 'var(--accent1)' : r['Days Until Due'] <= 7 ? 'var(--accent2)' : 'var(--accent3)'}">
+        ${r['Days Until Due'] < 0 ? r['Days Until Due'] + 'd' : r['Days Until Due'] === 0 ? 'Today' : '+' + r['Days Until Due'] + 'd'}
+      </td>
+      <td class="amount-cell">${fmtFull(r.Piutang)}</td>
+      <td><span class="status-badge ${statusClass(r.Status)}">${r.Status}</span></td>
+    </tr>`).join('') : '<tr><td colspan="8" class="no-data">No invoices match the current filters</td></tr>';
+
+  document.getElementById('pg-info').textContent = total > 0
+    ? `Showing ${Math.min(page*PAGE_SIZE+1,total)}–${Math.min((page+1)*PAGE_SIZE,total)} of ${total}`
+    : '0 results';
+
+  let pgHtml = '';
+  const maxPg = Math.min(pages, 7);
+  const start = Math.max(0, Math.min(page-3, pages-maxPg));
+  for (let i = start; i < start+Math.min(pages,maxPg); i++) {
+    pgHtml += `<button class="pg-btn${i===page?' active':''}" onclick="goPage(${i})">${i+1}</button>`;
+  }
+  if (pages > 1) {
+    pgHtml = `<button class="pg-btn" onclick="goPage(${Math.max(0,page-1)})">‹</button>` + pgHtml
+           + `<button class="pg-btn" onclick="goPage(${Math.min(pages-1,page+1)})">›</button>`;
+  }
+  document.getElementById('pagination').innerHTML = pgHtml;
+}
+
+function downloadTable() {
+  // Build the same filtered+sorted dataset renderTable uses
+  const sq = document.getElementById('search-box').value.toLowerCase();
+  let data = filteredData.filter(r => {
+    if (kpiFilter === 'overdue' && !r['Is Overdue?']) return false;
+    if (kpiFilter === 'today' && r['Days Until Due'] !== 0) return false;
+    if (kpiFilter === 'week' && !(r['Days Until Due'] >= 0 && r['Days Until Due'] <= 7)) return false;
+    if (tableSalesman !== 'ALL' && r.Salesmen !== tableSalesman) return false;
+    if (tableStatus !== 'ALL' && r.Status !== tableStatus) return false;
+    if (sq && !r.Pelanggan.toLowerCase().includes(sq) &&
+        !r['Nomor #'].toLowerCase().includes(sq) &&
+        !r.Salesmen.toLowerCase().includes(sq)) return false;
+    return true;
+  });
+  data = [...data].sort((a,b) => {
+    let av = a[sortKey], bv = b[sortKey];
+    if (av instanceof Date) av = av.getTime();
+    if (bv instanceof Date) bv = bv.getTime();
+    if (typeof av === 'string') return av.localeCompare(bv) * sortDir;
+    return ((av||0) - (bv||0)) * sortDir;
+  });
+
+  const rows = data.map(r => ({
+    'Channel': r.Channel,
+    'Salesman': r.Salesmen,
+    'Customer': r.Pelanggan,
+    'Invoice #': r['Nomor #'],
+    'Invoice Date': r.Tanggal ? r.Tanggal.toLocaleDateString('id-ID') : '',
+    'Due Date': r['Jatuh Tempo'] ? r['Jatuh Tempo'].toLocaleDateString('id-ID') : '',
+    'Days Until Due': r['Days Until Due'],
+    'Amount (IDR)': r.Piutang,
+    'Current': r['Blm Tempo'],
+    '1-30d': r['1 - 30'],
+    '31-60d': r['31 - 60'],
+    '61-90d': r['61 - 90'],
+    '91-120d': r['91 - 120'],
+    '>120d': r['> 120'],
+    'Status': r.Status,
+    'Overdue Amount': r['Overdue Amount'],
+  }));
+
+  const ws = XLSX.utils.json_to_sheet(rows);
+  // Auto column widths
+  const colWidths = Object.keys(rows[0] || {}).map(k => ({ wch: Math.max(k.length, 14) }));
+  ws['!cols'] = colWidths;
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Invoice Details');
+
+  const filters = [
+    channel !== 'ALL' ? channel : 'ALL Channels',
+    salesman !== 'ALL' ? salesman : '',
+    tableSalesman !== 'ALL' ? tableSalesman : '',
+    tableStatus !== 'ALL' ? tableStatus : '',
+    kpiFilter !== 'all' ? kpiFilter.toUpperCase() : '',
+  ].filter(Boolean).join('_');
+  const date = new Date().toISOString().slice(0,10);
+  XLSX.writeFile(wb, `AR_InvoiceDetails_${filters}_${date}.xlsx`);
+}
+</script>
+</body>
+</html>
