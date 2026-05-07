@@ -881,6 +881,8 @@ function renderTable() {
   document.getElementById('pagination').innerHTML = pgHtml;
 }
 
+function goPage(p) { page = p; renderTable(); }
+
 function downloadTable() {
   // Build the same filtered+sorted dataset renderTable uses
   const sq = document.getElementById('search-box').value.toLowerCase();
