@@ -293,22 +293,21 @@
 
   .fade-in { animation: fadeIn 0.4s ease forwards; }
   @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 </style>
 </head>
 <body>
 
-<!-- UPLOAD SCREEN -->
+<!-- LOADING SCREEN -->
 <div id="upload-screen">
   <div class="upload-logo">A<span>/</span>R Flow</div>
   <div class="upload-sub">B2B Collections Intelligence Dashboard</div>
-  <div class="drop-zone" id="drop-zone">
-    <div class="drop-icon">📊</div>
-    <div style="font-size:1.1rem;font-weight:600;">Drop your Accurate export here</div>
-    <div class="drop-text">Upload the latest .xlsx file from Accurate (Append1 sheet)</div>
-    <button class="drop-btn" onclick="document.getElementById('file-input').click()">Choose File</button>
-    <input type="file" id="file-input" accept=".xlsx,.xls">
+  <div class="drop-zone" style="cursor:default;border-style:solid;">
+    <div class="drop-icon" id="load-icon" style="animation:spin 1.2s linear infinite;display:inline-block;">⟳</div>
+    <div style="font-size:1.1rem;font-weight:600;" id="load-title">Loading data...</div>
+    <div class="drop-text" id="load-sub">Fetching from Google Sheets</div>
   </div>
-  <div class="upload-note">Your data stays local — nothing is uploaded to any server.</div>
+  <div class="upload-note" id="load-note">Data is pulled live from the connected Google Sheet.</div>
 </div>
 
 <!-- DASHBOARD -->
@@ -317,7 +316,7 @@
     <div class="logo">A<span>/</span>R Flow</div>
     <div class="topbar-right">
       <div class="data-date">Data as of: <strong id="data-date-lbl">—</strong></div>
-      <button class="reload-btn" onclick="resetToUpload()">↑ Upload New File</button>
+      <button class="reload-btn" onclick="fetchFromSheets()">↺ Refresh Data</button>
     </div>
   </div>
 
@@ -425,7 +424,7 @@
             <option value="Due in 14d">Due in 14d</option>
             <option value="Due in 30d">Due in 30d</option>
           </select>
-          <input class="search-box" type="text" id="search-box" placeholder="🔍  Search..." oninput="renderTable()" style="width:180px;">
+          <input class="search-box" type="text" id="search-box" placeholder="🔍  Search name, invoice, amount..." oninput="renderTable()" style="width:210px;">
           <button class="dl-btn" onclick="downloadTable()" title="Download current view as Excel">
             ⬇ Export
           </button>
@@ -470,30 +469,61 @@ let page = 0;
 const PAGE_SIZE = 15;
 let searchQ = '';
 
-// ─── FILE HANDLING ───────────────────────────────────────────────
-document.getElementById('file-input').addEventListener('change', e => {
-  if (e.target.files[0]) loadFile(e.target.files[0]);
-});
-const dz = document.getElementById('drop-zone');
-dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
-dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
-dz.addEventListener('drop', e => {
-  e.preventDefault(); dz.classList.remove('drag-over');
-  if (e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]);
-});
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxVwoe6GJZ--eXfK4HbgsBd6C5p0N7zN4t89STZ3_yBpjPyDs8YQXG4TVNV8o5Wd4PMFQ/exec';
 
-function loadFile(file) {
-  const reader = new FileReader();
-  reader.onload = e => {
-    const wb = XLSX.read(e.target.result, { type: 'array', cellDates: true });
-    const sheet = wb.Sheets['Append1'] || wb.Sheets[wb.SheetNames[0]];
-    const raw = XLSX.utils.sheet_to_json(sheet, { defval: '' });
-    processData(raw, file.name);
-  };
-  reader.readAsArrayBuffer(file);
+// ─── FETCH FROM GOOGLE SHEETS ────────────────────────────────────
+function fetchFromSheets() {
+  document.getElementById('dashboard').style.display = 'none';
+  document.getElementById('upload-screen').style.display = 'flex';
+  const icon = document.getElementById('load-icon');
+  icon.textContent = '⟳';
+  icon.style.animation = 'spin 1.2s linear infinite';
+  document.getElementById('load-title').textContent = 'Loading data...';
+  document.getElementById('load-sub').textContent = 'Fetching from Google Sheets';
+  document.getElementById('load-note').innerHTML = '';
+
+  fetch(APPS_SCRIPT_URL)
+    .then(r => { if (!r.ok) throw new Error('Status ' + r.status); return r.json(); })
+    .then(rows => {
+      if (!rows || rows.length === 0) throw new Error('No data found');
+      processData(rows);
+    })
+    .catch(err => {
+      icon.textContent = '⚠️';
+      icon.style.animation = 'none';
+      document.getElementById('load-title').textContent = 'Failed to load data';
+      document.getElementById('load-sub').textContent = 'Could not connect to Google Sheets. Please try again.';
+      document.getElementById('load-note').innerHTML = '<button class="drop-btn" onclick="fetchFromSheets()" style="margin-top:1rem;">↺ Retry</button>';
+    });
 }
 
-function processData(raw, filename) {
+function parseCSV(csv) {
+  const lines = csv.split('\n');
+  const headers = parseCSVLine(lines[0]);
+  return lines.slice(1).filter(l => l.trim()).map(line => {
+    const vals = parseCSVLine(line);
+    const obj = {};
+    headers.forEach((h, i) => obj[h.trim()] = (vals[i] || '').trim());
+    return obj;
+  });
+}
+
+function parseCSVLine(line) {
+  const result = []; let cur = ''; let inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (c === '"') { inQ = !inQ; }
+    else if (c === ',' && !inQ) { result.push(cur); cur = ''; }
+    else { cur += c; }
+  }
+  result.push(cur);
+  return result;
+}
+
+// Auto-fetch on page load
+window.addEventListener('load', fetchFromSheets);
+
+function processData(raw) {
   allData = raw.map(r => {
     const due = r['Jatuh Tempo'] ? new Date(r['Jatuh Tempo']) : null;
     const today = new Date(); today.setHours(0,0,0,0);
@@ -547,10 +577,8 @@ function populateSalesmanFilter() {
 }
 
 function resetToUpload() {
-  document.getElementById('upload-screen').style.display = 'flex';
-  document.getElementById('dashboard').style.display = 'none';
-  document.getElementById('file-input').value = '';
   channel = 'ALL'; salesman = 'ALL'; kpiFilter = 'all'; tableSalesman = 'ALL'; tableStatus = 'ALL';
+  fetchFromSheets();
 }
 
 // ─── FILTERS ─────────────────────────────────────────────────────
@@ -789,9 +817,14 @@ function renderTable() {
     if (tableSalesman !== 'ALL' && r.Salesmen !== tableSalesman) return false;
     if (tableStatus !== 'ALL' && r.Status !== tableStatus) return false;
     // Search
-    if (searchQ && !r.Pelanggan.toLowerCase().includes(searchQ) &&
-        !r['Nomor #'].toLowerCase().includes(searchQ) &&
-        !r.Salesmen.toLowerCase().includes(searchQ)) return false;
+    if (searchQ) {
+      const digits = searchQ.replace(/[^0-9]/g, '');
+      const amtMatch = digits.length > 0 && String(Math.round(r.Piutang)).includes(digits);
+      const textMatch = r.Pelanggan.toLowerCase().includes(searchQ) ||
+                        r['Nomor #'].toLowerCase().includes(searchQ) ||
+                        r.Salesmen.toLowerCase().includes(searchQ);
+      if (!textMatch && !amtMatch) return false;
+    }
     return true;
   });
 
@@ -857,9 +890,11 @@ function downloadTable() {
     if (kpiFilter === 'week' && !(r['Days Until Due'] >= 0 && r['Days Until Due'] <= 7)) return false;
     if (tableSalesman !== 'ALL' && r.Salesmen !== tableSalesman) return false;
     if (tableStatus !== 'ALL' && r.Status !== tableStatus) return false;
+    const amtStr = String(Math.round(r.Piutang));
     if (sq && !r.Pelanggan.toLowerCase().includes(sq) &&
         !r['Nomor #'].toLowerCase().includes(sq) &&
-        !r.Salesmen.toLowerCase().includes(sq)) return false;
+        !r.Salesmen.toLowerCase().includes(sq) &&
+        !amtStr.includes(sq.replace(/[^0-9]/g, ''))) return false;
     return true;
   });
   data = [...data].sort((a,b) => {
