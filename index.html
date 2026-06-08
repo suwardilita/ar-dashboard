@@ -25,6 +25,8 @@
   --green-mid: #86EFAC;
   --gray-ch: #A0A09A;
   --gray-ch-light: #EBEBEA;
+  --red: #DC2626;
+  --red-light: #FEE2E2;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { background: var(--bg); color: var(--text); font-family: 'Plus Jakarta Sans', sans-serif; min-height: 100vh; -webkit-font-smoothing: antialiased; font-size: 14px; }
@@ -84,16 +86,17 @@ body { background: var(--bg); color: var(--text); font-family: 'Plus Jakarta San
 .kpi-card:hover { box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
 .kpi-card::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 2.5px; border-radius: 0 0 10px 10px; background: transparent; transition: background 0.15s; }
 .kpi-card.k-default::after { background: var(--border); }
-.kpi-card.k-urgent::after  { background: var(--purple-dark); }
+.kpi-card.k-urgent::after  { background: var(--red); }
 .kpi-card.k-warn::after    { background: var(--purple); }
 .kpi-card.k-good::after    { background: var(--green); }
 .kpi-card.k-neutral::after { background: var(--purple-mid); }
 .kpi-card.active-filter { border-color: var(--purple); box-shadow: 0 0 0 3px var(--purple-light); }
+.kpi-card.active-filter.k-urgent { border-color: var(--red); box-shadow: 0 0 0 3px var(--red-light); }
 .kpi-card.active-filter.k-good { border-color: var(--green); box-shadow: 0 0 0 3px var(--green-light); }
 .kpi-label { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.09em; color: var(--muted); margin-bottom: 0.5rem; }
 .kpi-value { font-size: 1.2rem; font-weight: 800; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.15; }
 .kpi-card.k-default .kpi-value { color: var(--text); }
-.kpi-card.k-urgent  .kpi-value { color: var(--purple-dark); }
+.kpi-card.k-urgent  .kpi-value { color: var(--red); }
 .kpi-card.k-warn    .kpi-value { color: var(--purple); }
 .kpi-card.k-good    .kpi-value { color: var(--green); }
 .kpi-card.k-neutral .kpi-value { color: var(--purple); }
@@ -114,17 +117,18 @@ body { background: var(--bg); color: var(--text); font-family: 'Plus Jakarta San
 .tl-bucket { background: var(--surface); border: 1.5px solid var(--border); border-radius: 10px; padding: 1.1rem 1.2rem; cursor: pointer; transition: all 0.15s; position: relative; overflow: hidden; }
 .tl-bucket:hover { border-color: var(--border-strong); box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
 .tl-bucket.tl-active { border-color: var(--purple); box-shadow: 0 0 0 3px var(--purple-light); }
+.tl-bucket.tl-overdue.tl-active { border-color: var(--red); box-shadow: 0 0 0 3px var(--red-light); }
 .tl-bucket.tl-good.tl-active { border-color: var(--green); box-shadow: 0 0 0 3px var(--green-light); }
 .tl-label { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.09em; color: var(--muted); margin-bottom: 0.6rem; }
 .tl-amount { font-size: 1.05rem; font-weight: 800; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.tl-bucket.tl-overdue .tl-amount { color: var(--purple-dark); }
+.tl-bucket.tl-overdue .tl-amount { color: var(--red); }
 .tl-bucket.tl-urgent  .tl-amount { color: var(--purple); }
 .tl-bucket.tl-soon    .tl-amount { color: var(--purple); }
 .tl-bucket.tl-future  .tl-amount { color: var(--muted); }
 .tl-bucket.tl-good    .tl-amount { color: var(--green); }
 .tl-count { font-size: 0.72rem; color: var(--muted); margin-top: 0.3rem; }
 .tl-bar { position: absolute; bottom: 0; left: 0; right: 0; height: 3px; border-radius: 0 0 10px 10px; }
-.tl-bucket.tl-overdue .tl-bar { background: var(--purple-dark); }
+.tl-bucket.tl-overdue .tl-bar { background: var(--red); }
 .tl-bucket.tl-urgent  .tl-bar { background: var(--purple); }
 .tl-bucket.tl-soon    .tl-bar { background: var(--purple-mid); }
 .tl-bucket.tl-future  .tl-bar { background: var(--border); }
@@ -200,7 +204,7 @@ tbody tr:hover { background: var(--surface2); }
 td { padding: 0.55rem 0.9rem; white-space: nowrap; }
 
 .badge { padding: 0.15rem 0.5rem; border-radius: 4px; font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
-.b-overdue { background: var(--purple-light); color: var(--purple-dark); }
+.b-overdue { background: var(--red-light); color: var(--red); }
 .b-today   { background: var(--purple-light); color: var(--purple); }
 .b-week    { background: var(--purple-light); color: var(--purple); }
 .b-14d     { background: var(--surface2); color: var(--muted); }
@@ -306,6 +310,16 @@ td { padding: 0.55rem 0.9rem; white-space: nowrap; }
           <div class="card-meta" id="scorecard-meta"></div>
         </div>
         <div class="scorecard-list" id="scorecard-list"></div>
+        <div style="margin-top:1rem;padding-top:0.9rem;border-top:1px solid var(--border);display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;">
+          <span style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--muted-light);">Score weights</span>
+          <span style="font-size:0.68rem;color:var(--muted);">Current <strong style="color:#2D9E6B">0×</strong></span>
+          <span style="font-size:0.68rem;color:var(--muted);">1–30d <strong style="color:#B45309">1×</strong></span>
+          <span style="font-size:0.68rem;color:var(--muted);">31–60d <strong style="color:#C2410C">2.5×</strong></span>
+          <span style="font-size:0.68rem;color:var(--muted);">61–90d <strong style="color:#DC2626">4×</strong></span>
+          <span style="font-size:0.68rem;color:var(--muted);">91–120d <strong style="color:#B91C1C">6×</strong></span>
+          <span style="font-size:0.68rem;color:var(--muted);">&gt;120d <strong style="color:#7F1D1D">10×</strong></span>
+          <span style="margin-left:auto;font-size:0.68rem;color:var(--muted-light);">▎ = channel average</span>
+        </div>
       </div>
       <div class="card">
         <div class="card-head">
@@ -526,41 +540,85 @@ function renderTimeline() {
   }).join('');
 }
 
-// ── SCORECARD (benchmark vs channel avg) ──
+// ── WEIGHTED AGING SCORE ──
+// Each IDR in an aging bucket gets a severity weight.
+// Score = 100 − (weighted_overdue / (total_portfolio × MAX_W) × 100)
+// Higher score = cleaner book. >120d is penalised 10× vs 1× for 1-30d.
+const AGING_W = { 'Blm Tempo': 0, '1 - 30': 1, '31 - 60': 2.5, '61 - 90': 4, '91 - 120': 6, '> 120': 10 };
+const MAX_W = 10; // maximum possible weight (>120d bucket)
+
+function weightedScore(rows) {
+  const total = rows.reduce((s,r) => s + r.Piutang, 0);
+  if (total === 0) return 100;
+  const weighted = rows.reduce((s, r) => {
+    return s + Object.entries(AGING_W).reduce((ws, [key, w]) => ws + (r[key]||0) * w, 0);
+  }, 0);
+  const maxPossible = total * MAX_W;
+  return Math.max(0, 100 - (weighted / maxPossible * 100));
+}
+
+// ── SCORECARD (weighted aging score, benchmarked vs channel avg) ──
 function renderScorecard() {
-  // Use allData for channel scope (not filteredData, so individual salesman filter doesn't break scorecard)
-  const scope = allData.filter(r => channel==='ALL'||r.Channel===channel);
-  const channelTotal   = scope.reduce((s,r)=>s+r.Piutang,0)||1;
-  const channelOverdue = scope.filter(r=>r['Is Overdue?']).reduce((s,r)=>s+r.Piutang,0);
-  const channelAvg     = ((channelTotal-channelOverdue)/channelTotal*100);
+  // Always use full channel scope so salesman filter doesn't collapse the benchmark
+  const scope = allData.filter(r => channel==='ALL' || r.Channel===channel);
 
-  const names = [...new Set(scope.map(r=>r.Salesmen))];
+  // Channel average using same weighted formula
+  const channelScore = weightedScore(scope);
+
+  const names = [...new Set(scope.map(r => r.Salesmen))];
   const scores = names.map(name => {
-    const rows    = scope.filter(r=>r.Salesmen===name);
-    const total   = rows.reduce((s,r)=>s+r.Piutang,0)||1;
-    const overdue = rows.filter(r=>r['Is Overdue?']).reduce((s,r)=>s+r.Piutang,0);
-    const rate    = (total-overdue)/total*100;
-    const channels= [...new Set(rows.map(r=>r.Channel))];
-    return { name, rate, total, overdue, channels };
-  }).sort((a,b)=>b.rate-a.rate);
+    const rows     = scope.filter(r => r.Salesmen===name);
+    const total    = rows.reduce((s,r) => s+r.Piutang, 0);
+    const overdue  = rows.filter(r => r['Is Overdue?']).reduce((s,r) => s+r.Piutang, 0);
+    const wscore   = weightedScore(rows);
+    const channels = [...new Set(rows.map(r => r.Channel))];
 
-  document.getElementById('scorecard-meta').textContent = `Channel avg: ${channelAvg.toFixed(1)}%`;
+    // Breakdown for tooltip context
+    const byBucket = Object.keys(AGING_W).map(k => ({
+      lbl: k, amt: rows.reduce((s,r) => s+(r[k]||0), 0), w: AGING_W[k]
+    })).filter(b => b.amt > 0 && b.w > 0);
+
+    return { name, wscore, total, overdue, channels, byBucket };
+  }).sort((a,b) => b.wscore - a.wscore);
+
+  document.getElementById('scorecard-meta').textContent = `Channel avg: ${channelScore.toFixed(1)}`;
 
   const medals = ['🏆','🥈','🥉'];
-  const ABOVE_THRESH = 3; // % above avg = "Above Average"
-  const BELOW_THRESH = 5; // % below avg = "Needs Attention"
+  const ABOVE_THRESH = 4;
+  const BELOW_THRESH = 6;
 
-  document.getElementById('scorecard-list').innerHTML = scores.map((s,i) => {
-    const diff = s.rate - channelAvg;
+  document.getElementById('scorecard-list').innerHTML = scores.map((s, i) => {
+    const diff = s.wscore - channelScore;
     let badgeClass, badgeText;
-    if (diff >= ABOVE_THRESH)       { badgeClass='above'; badgeText='Above Average'; }
-    else if (diff > -BELOW_THRESH)  { badgeClass='track'; badgeText='On Track'; }
-    else                            { badgeClass='below'; badgeText='Needs Attention'; }
+    if (diff >= ABOVE_THRESH)      { badgeClass='above'; badgeText='Above Average'; }
+    else if (diff > -BELOW_THRESH) { badgeClass='track'; badgeText='On Track'; }
+    else                           { badgeClass='below'; badgeText='Needs Attention'; }
 
-    const barColor = badgeClass==='above' ? 'var(--green)' : badgeClass==='track' ? 'var(--purple-mid)' : 'var(--border-strong)';
-    const chPips = s.channels.map(c=>`<span class="ch-pip ${c.toLowerCase()}">${c}</span>`).join('');
-    const avgPct = Math.min(channelAvg, 100);
-    const ownPct = Math.min(s.rate, 100);
+    const barColor  = badgeClass==='above' ? 'var(--green)' : badgeClass==='track' ? 'var(--purple-mid)' : 'var(--border-strong)';
+    const scoreColor= badgeClass==='above' ? 'var(--green)' : badgeClass==='track' ? 'var(--purple)' : 'var(--muted)';
+    const chPips    = s.channels.map(c => `<span class="ch-pip ${c.toLowerCase()}">${c}</span>`).join('');
+    const avgPct    = Math.min(channelScore, 100);
+    const ownPct    = Math.min(s.wscore, 100);
+
+    // Stacked mini aging bar — good → worst warm gradient
+    const bucketColors = {
+      'Blm Tempo': '#86EFAC',
+      '1 - 30':    '#FDE68A',
+      '31 - 60':   '#FBB054',
+      '61 - 90':   '#F87060',
+      '91 - 120':  '#E04545',
+      '> 120':     '#7F1D1D'
+    };
+    const smRows = scope.filter(r => r.Salesmen===s.name);
+    const stackSegs = Object.keys(AGING_W).map(k => {
+      const bucketAmt = smRows.reduce((sum,r) => sum+(r[k]||0), 0);
+      const pct = s.total > 0 ? bucketAmt/s.total*100 : 0;
+      return pct > 0 ? `<div style="flex:${pct};background:${bucketColors[k]};height:100%;"></div>` : '';
+    }).join('');
+
+    // Worst bucket label for quick insight
+    const worstBucket = s.byBucket.sort((a,b) => (b.amt*b.w)-(a.amt*a.w))[0];
+    const worstNote = worstBucket ? `· worst: ${worstBucket.lbl} (${fmt(worstBucket.amt)})` : '';
 
     return `<div class="sc-row">
       <div class="sc-rank">${medals[i]||i+1}</div>
@@ -573,9 +631,10 @@ function renderScorecard() {
           <div class="sc-fill" style="width:${ownPct}%;background:${barColor}"></div>
           <div class="sc-avg-tick" style="left:${avgPct}%"></div>
         </div>
-        <div class="sc-bar-labels">
-          <span class="sc-own-pct">${s.rate.toFixed(1)}% &nbsp;·&nbsp; ${fmt(s.total)} portfolio</span>
-          <span class="sc-avg-note">avg ${channelAvg.toFixed(1)}%</span>
+        <div style="display:flex;height:4px;border-radius:2px;overflow:hidden;margin-top:4px;background:var(--border);">${stackSegs}</div>
+        <div class="sc-bar-labels" style="margin-top:3px;">
+          <span class="sc-own-pct" style="color:${scoreColor};font-weight:600;">${s.wscore.toFixed(1)} &nbsp;·&nbsp; <span style="font-weight:400;color:var(--muted)">${fmt(s.total)} portfolio ${worstNote}</span></span>
+          <span class="sc-avg-note">avg ${channelScore.toFixed(1)}</span>
         </div>
       </div>
       <span class="sc-badge ${badgeClass}">${badgeText}</span>
@@ -673,7 +732,7 @@ function renderTable() {
   };
   const chColor = c => c==='OSA'?'var(--purple)':c==='SESA'?'var(--gray-ch)':'var(--green)';
   const chBg    = c => c==='OSA'?'var(--purple-light)':c==='SESA'?'var(--gray-ch-light)':'var(--green-light)';
-  const daysColor = d => d<0?'var(--purple-dark)':d<=7?'var(--purple)':'var(--green)';
+  const daysColor = d => d<0?'var(--red)':d<=7?'var(--purple)':'var(--green)';
   const daysText  = d => d<0?d+'d':d===0?'Today':'+'+d+'d';
 
   document.getElementById('tbl-body').innerHTML = slice.length ? slice.map(r=>`<tr>
