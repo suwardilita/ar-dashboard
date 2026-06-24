@@ -400,7 +400,13 @@ function fetchFromSheets() {
 
   fetch(SHEETS_URL)
     .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
-    .then(rows => { if (!rows?.length) throw new Error('Empty'); processData(rows); })
+    .then(payload => {
+      // Support both old array format and new {lastUpdated, rows} format
+      const rows = Array.isArray(payload) ? payload : payload.rows;
+      const lastUpdated = Array.isArray(payload) ? null : payload.lastUpdated;
+      if (!rows?.length) throw new Error('Empty');
+      processData(rows, lastUpdated);
+    })
     .catch(() => {
       sp.style.animation = 'none'; sp.style.display = 'none';
       document.getElementById('load-title').textContent = 'Could not load data';
@@ -410,7 +416,7 @@ function fetchFromSheets() {
 
 window.addEventListener('load', fetchFromSheets);
 
-function processData(raw) {
+function processData(raw, lastUpdated) {
   const today = new Date(); today.setHours(0,0,0,0);
   allData = raw.map(r => {
     const due = r['Jatuh Tempo'] ? new Date(r['Jatuh Tempo']) : null;
@@ -443,7 +449,11 @@ function processData(raw) {
     };
   }).filter(r => r.Piutang > 0);
 
-  document.getElementById('data-date-lbl').textContent = new Date().toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'});
+  // Show real sheet last-modified time if available, otherwise fall back to fetch time
+  const tsDate = lastUpdated ? new Date(lastUpdated) : new Date();
+  const tsLabel = tsDate.toLocaleDateString('id-ID', {day:'2-digit', month:'short', year:'numeric'})
+    + ', ' + tsDate.toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'});
+  document.getElementById('data-date-lbl').textContent = tsLabel;
   buildSalesmanDropdowns();
   document.getElementById('upload-screen').style.display = 'none';
   document.getElementById('dashboard').style.display = 'block';
