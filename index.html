@@ -312,12 +312,13 @@ td { padding: 0.55rem 0.9rem; white-space: nowrap; }
         <div class="scorecard-list" id="scorecard-list"></div>
         <div style="margin-top:1rem;padding-top:0.9rem;border-top:1px solid var(--border);display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;">
           <span style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--muted-light);">Score weights</span>
-          <span style="font-size:0.68rem;color:var(--muted);">Current <strong style="color:#2D9E6B">0×</strong></span>
-          <span style="font-size:0.68rem;color:var(--muted);">1–30d <strong style="color:#B45309">1×</strong></span>
-          <span style="font-size:0.68rem;color:var(--muted);">31–60d <strong style="color:#C2410C">2.5×</strong></span>
-          <span style="font-size:0.68rem;color:var(--muted);">61–90d <strong style="color:#DC2626">4×</strong></span>
-          <span style="font-size:0.68rem;color:var(--muted);">91–120d <strong style="color:#B91C1C">6×</strong></span>
-          <span style="font-size:0.68rem;color:var(--muted);">&gt;120d <strong style="color:#7F1D1D">10×</strong></span>
+          <span style="font-size:0.68rem;color:var(--muted);">Not due <strong style="color:#2D9E6B">0×</strong></span>
+          <span style="font-size:0.68rem;color:var(--muted);">1–7d late <strong style="color:#B45309">2×</strong></span>
+          <span style="font-size:0.68rem;color:var(--muted);">8–30d <strong style="color:#C2410C">4×</strong></span>
+          <span style="font-size:0.68rem;color:var(--muted);">31–60d <strong style="color:#DC2626">6×</strong></span>
+          <span style="font-size:0.68rem;color:var(--muted);">61–90d <strong style="color:#B91C1C">8×</strong></span>
+          <span style="font-size:0.68rem;color:var(--muted);">91–120d <strong style="color:#991B1B">10×</strong></span>
+          <span style="font-size:0.68rem;color:var(--muted);">&gt;120d <strong style="color:#7F1D1D">14×</strong></span>
           <span style="margin-left:auto;font-size:0.68rem;color:var(--muted-light);">▎ = channel average</span>
         </div>
       </div>
@@ -550,21 +551,29 @@ function renderTimeline() {
   }).join('');
 }
 
-// ── WEIGHTED AGING SCORE ──
-// Each IDR in an aging bucket gets a severity weight.
-// Score = 100 − (weighted_overdue / (total_portfolio × MAX_W) × 100)
-// Higher score = cleaner book. >120d is penalised 10× vs 1× for 1-30d.
-const AGING_W = { 'Blm Tempo': 0, '1 - 30': 1, '31 - 60': 2.5, '61 - 90': 4, '91 - 120': 6, '> 120': 10 };
-const MAX_W = 10; // maximum possible weight (>120d bucket)
+// ── WEIGHTED SCORE (per-invoice, based on Days Until Due) ──
+// Not-yet-due invoices carry 0 penalty.
+// Overdue invoices are weighted by exactly how late they are.
+// Score = 100 - (sum of invoice penalties / max_possible * 100)
+// MAX_W = 14 (the weight for >120d overdue)
+const MAX_W = 14;
+
+function invoiceWeight(days) {
+  if (days === null || days === undefined) return 0;
+  if (days >    0) return 0;    // not yet due
+  if (days >= -  7) return 2;   // 1-7d overdue
+  if (days >= - 30) return 4;   // 8-30d overdue
+  if (days >= - 60) return 6;   // 31-60d overdue
+  if (days >= - 90) return 8;   // 61-90d overdue
+  if (days >= -120) return 10;  // 91-120d overdue
+  return 14;                    // >120d overdue
+}
 
 function weightedScore(rows) {
   const total = rows.reduce((s,r) => s + r.Piutang, 0);
   if (total === 0) return 100;
-  const weighted = rows.reduce((s, r) => {
-    return s + Object.entries(AGING_W).reduce((ws, [key, w]) => ws + (r[key]||0) * w, 0);
-  }, 0);
-  const maxPossible = total * MAX_W;
-  return Math.max(0, 100 - (weighted / maxPossible * 100));
+  const weighted = rows.reduce((s,r) => s + r.Piutang * invoiceWeight(r['Days Until Due']), 0);
+  return Math.max(0, 100 - (weighted / (total * MAX_W) * 100));
 }
 
 // ── SCORECARD (weighted aging score, benchmarked vs channel avg) ──
@@ -583,10 +592,19 @@ function renderScorecard() {
     const wscore   = weightedScore(rows);
     const channels = [...new Set(rows.map(r => r.Channel))];
 
-    // Breakdown for tooltip context
-    const byBucket = Object.keys(AGING_W).map(k => ({
-      lbl: k, amt: rows.reduce((s,r) => s+(r[k]||0), 0), w: AGING_W[k]
-    })).filter(b => b.amt > 0 && b.w > 0);
+    // Overdue breakdown by days bucket (for worst-bucket note)
+    const dayBucketDefs = [
+      { lbl:'1-7d',    w:2,  f: r => r['Days Until Due'] <= 0 && r['Days Until Due'] >= -7 },
+      { lbl:'8-30d',   w:4,  f: r => r['Days Until Due'] < -7  && r['Days Until Due'] >= -30 },
+      { lbl:'31-60d',  w:6,  f: r => r['Days Until Due'] < -30 && r['Days Until Due'] >= -60 },
+      { lbl:'61-90d',  w:8,  f: r => r['Days Until Due'] < -60 && r['Days Until Due'] >= -90 },
+      { lbl:'91-120d', w:10, f: r => r['Days Until Due'] < -90 && r['Days Until Due'] >= -120 },
+      { lbl:'>120d',   w:14, f: r => r['Days Until Due'] < -120 },
+    ];
+    const byBucket = dayBucketDefs.map(b => ({
+      lbl: b.lbl, w: b.w,
+      amt: rows.filter(b.f).reduce((s,r) => s+r.Piutang, 0)
+    })).filter(b => b.amt > 0);
 
     return { name, wscore, total, overdue, channels, byBucket };
   }).sort((a,b) => b.wscore - a.wscore);
@@ -610,23 +628,25 @@ function renderScorecard() {
     const avgPct    = Math.min(channelScore, 100);
     const ownPct    = Math.min(s.wscore, 100);
 
-    // Stacked mini aging bar — good → worst warm gradient
-    const bucketColors = {
-      'Blm Tempo': '#86EFAC',
-      '1 - 30':    '#FDE68A',
-      '31 - 60':   '#FBB054',
-      '61 - 90':   '#F87060',
-      '91 - 120':  '#E04545',
-      '> 120':     '#7F1D1D'
-    };
+    // Stacked mini bar — shows Days Until Due composition using warm gradient
+    // Each segment = proportion of portfolio in that overdue bucket
+    const daysBuckets = [
+      { label:'not due',  color:'#86EFAC', f: r => r['Days Until Due'] > 0 },
+      { label:'1-7d',     color:'#FDE68A', f: r => r['Days Until Due'] <= 0 && r['Days Until Due'] >= -7 },
+      { label:'8-30d',    color:'#FBB054', f: r => r['Days Until Due'] < -7  && r['Days Until Due'] >= -30 },
+      { label:'31-60d',   color:'#F87060', f: r => r['Days Until Due'] < -30 && r['Days Until Due'] >= -60 },
+      { label:'61-90d',   color:'#E04545', f: r => r['Days Until Due'] < -60 && r['Days Until Due'] >= -90 },
+      { label:'91-120d',  color:'#C41A1A', f: r => r['Days Until Due'] < -90 && r['Days Until Due'] >= -120 },
+      { label:'>120d',    color:'#7F1D1D', f: r => r['Days Until Due'] < -120 },
+    ];
     const smRows = scope.filter(r => r.Salesmen===s.name);
-    const stackSegs = Object.keys(AGING_W).map(k => {
-      const bucketAmt = smRows.reduce((sum,r) => sum+(r[k]||0), 0);
-      const pct = s.total > 0 ? bucketAmt/s.total*100 : 0;
-      return pct > 0 ? `<div style="flex:${pct};background:${bucketColors[k]};height:100%;"></div>` : '';
+    const stackSegs = daysBuckets.map(b => {
+      const amt = smRows.filter(b.f).reduce((sum,r) => sum+r.Piutang, 0);
+      const pct = s.total > 0 ? amt/s.total*100 : 0;
+      return pct > 0 ? `<div style="flex:${pct};background:${b.color};height:100%;" title="${b.label}: ${fmt(amt)}"></div>` : '';
     }).join('');
 
-    // Worst bucket label for quick insight
+    // Worst overdue bucket by weighted impact
     const worstBucket = s.byBucket.sort((a,b) => (b.amt*b.w)-(a.amt*a.w))[0];
     const worstNote = worstBucket ? `· worst: ${worstBucket.lbl} (${fmt(worstBucket.amt)})` : '';
 
