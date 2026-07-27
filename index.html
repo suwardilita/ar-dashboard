@@ -103,6 +103,11 @@ body { background: var(--bg); color: var(--text); font-family: 'Plus Jakarta San
 .kpi-sub { font-size: 0.72rem; color: var(--muted); margin-top: 0.3rem; }
 .kpi-hint { font-size: 0.65rem; color: var(--muted-light); margin-top: 0.4rem; opacity: 0; transition: opacity 0.15s; }
 .kpi-card:hover .kpi-hint, .kpi-card.active-filter .kpi-hint { opacity: 1; }
+.kpi-delta { font-size: 0.68rem; margin-top: 0.35rem; font-weight: 600; display: flex; align-items: center; gap: 0.25rem; }
+.kpi-delta.good    { color: var(--green); }
+.kpi-delta.bad     { color: var(--red); }
+.kpi-delta.neutral { color: var(--muted); }
+.kpi-delta-date    { font-size: 0.62rem; color: var(--muted-light); font-weight: 400; margin-left: 0.15rem; }
 
 /* ── CARD BASE ── */
 .card { background: var(--surface); border: 1.5px solid var(--border); border-radius: 10px; padding: 1.3rem 1.5rem; }
@@ -270,30 +275,35 @@ td { padding: 0.55rem 0.9rem; white-space: nowrap; }
         <div class="kpi-label">Total A/R</div>
         <div class="kpi-value" id="kpi-total">—</div>
         <div class="kpi-sub" id="kpi-total-sub">—</div>
+        <div class="kpi-delta" id="kpi-total-delta"></div>
         <div class="kpi-hint">Show all invoices ↓</div>
       </div>
       <div class="kpi-card k-urgent" id="kpi-card-overdue" onclick="setKpiFilter('overdue')">
         <div class="kpi-label">Overdue</div>
         <div class="kpi-value" id="kpi-overdue">—</div>
         <div class="kpi-sub" id="kpi-overdue-sub">—</div>
+        <div class="kpi-delta" id="kpi-overdue-delta"></div>
         <div class="kpi-hint">Filter table ↓</div>
       </div>
       <div class="kpi-card k-warn" id="kpi-card-today" onclick="setKpiFilter('today')">
         <div class="kpi-label">Due Today</div>
         <div class="kpi-value" id="kpi-today">—</div>
         <div class="kpi-sub" id="kpi-today-sub">—</div>
+        <div class="kpi-delta" id="kpi-today-delta"></div>
         <div class="kpi-hint">Filter table ↓</div>
       </div>
       <div class="kpi-card k-good" id="kpi-card-week" onclick="setKpiFilter('week')">
         <div class="kpi-label">Due This Week</div>
         <div class="kpi-value" id="kpi-week">—</div>
         <div class="kpi-sub" id="kpi-week-sub">—</div>
+        <div class="kpi-delta" id="kpi-week-delta"></div>
         <div class="kpi-hint">Filter table ↓</div>
       </div>
       <div class="kpi-card k-neutral" style="cursor:default;">
         <div class="kpi-label">Collection Rate</div>
         <div class="kpi-value" id="kpi-rate">—</div>
         <div class="kpi-sub">of total A/R is current</div>
+        <div class="kpi-delta" id="kpi-rate-delta"></div>
       </div>
     </div>
 
@@ -509,22 +519,102 @@ function renderAll() { renderKPIs(); renderTimeline(); renderScorecard(); render
 function fmt(n) { return 'Rp\u00A0'+Math.round(n).toLocaleString('id-ID'); }
 function fmtDate(d) { return d ? d.toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'}) : '—'; }
 
+// ── DAILY SNAPSHOT (localStorage) ──
+const SNAP_KEY = 'arflow_snapshot';
+
+function todayStr() {
+  return new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+}
+
+function loadSnapshot() {
+  try { return JSON.parse(localStorage.getItem(SNAP_KEY)); } catch { return null; }
+}
+
+function saveSnapshot(data) {
+  try { localStorage.setItem(SNAP_KEY, JSON.stringify(data)); } catch {}
+}
+
+// Save once per calendar day — first successful fetch of the day.
+// Subsequent fetches the same day do NOT overwrite the snapshot.
+function maybeSaveSnapshot(kpis) {
+  const snap = loadSnapshot();
+  if (!snap || snap.date !== todayStr()) {
+    saveSnapshot({ date: todayStr(), ...kpis });
+  }
+}
+
 // ── KPIs ──
 function renderKPIs() {
   const total   = filteredData.reduce((s,r)=>s+r.Piutang,0);
   const overdue = filteredData.filter(r=>r['Is Overdue?']).reduce((s,r)=>s+r.Piutang,0);
   const today   = filteredData.filter(r=>r['Days Until Due']===0);
   const week    = filteredData.filter(r=>r['Days Until Due']>=0&&r['Days Until Due']<=7);
-  const rate    = total>0 ? ((total-overdue)/total*100).toFixed(1) : 0;
-  document.getElementById('kpi-total').textContent   = fmt(total);
+  const todayAmt = today.reduce((s,r)=>s+r.Piutang,0);
+  const weekAmt  = week.reduce((s,r)=>s+r.Piutang,0);
+  const rate    = total>0 ? parseFloat(((total-overdue)/total*100).toFixed(1)) : 0;
+
+  document.getElementById('kpi-total').textContent    = fmt(total);
   document.getElementById('kpi-total-sub').textContent = filteredData.length+' invoices';
-  document.getElementById('kpi-overdue').textContent  = fmt(overdue);
+  document.getElementById('kpi-overdue').textContent   = fmt(overdue);
   document.getElementById('kpi-overdue-sub').textContent = filteredData.filter(r=>r['Is Overdue?']).length+' invoices';
-  document.getElementById('kpi-today').textContent    = fmt(today.reduce((s,r)=>s+r.Piutang,0));
-  document.getElementById('kpi-today-sub').textContent = today.length+' invoices';
-  document.getElementById('kpi-week').textContent     = fmt(week.reduce((s,r)=>s+r.Piutang,0));
-  document.getElementById('kpi-week-sub').textContent  = week.length+' invoices';
-  document.getElementById('kpi-rate').textContent     = rate+'%';
+  document.getElementById('kpi-today').textContent     = fmt(todayAmt);
+  document.getElementById('kpi-today-sub').textContent  = today.length+' invoices';
+  document.getElementById('kpi-week').textContent      = fmt(weekAmt);
+  document.getElementById('kpi-week-sub').textContent   = week.length+' invoices';
+  document.getElementById('kpi-rate').textContent      = rate+'%';
+
+  // Save snapshot (only on first fetch of the day)
+  const currentKpis = { total, overdue, todayAmt, weekAmt, rate };
+  maybeSaveSnapshot(currentKpis);
+
+  // Render deltas vs previous day's snapshot
+  const snap = loadSnapshot();
+  // Only show delta if snapshot is from a previous day
+  if (snap && snap.date !== todayStr()) {
+    const snapDate = snap.date
+      ? new Date(snap.date).toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'})
+      : '';
+    const since = `<span class="kpi-delta-date">since ${snapDate}</span>`;
+
+    // Total A/R — down = good (neutral either way, just show)
+    renderDelta('kpi-total-delta', total - snap.total, since, false);
+    // Overdue — down = good, up = bad
+    renderDelta('kpi-overdue-delta', overdue - snap.overdue, since, true);
+    // Due Today — neutral
+    renderDelta('kpi-today-delta', todayAmt - snap.todayAmt, since, false);
+    // Due This Week — neutral
+    renderDelta('kpi-week-delta', weekAmt - snap.weekAmt, since, false);
+    // Collection Rate — up = good, down = bad (inverted)
+    renderRateDelta('kpi-rate-delta', rate - snap.rate, since);
+  } else {
+    // Same day or no prior snapshot — clear deltas
+    ['kpi-total-delta','kpi-overdue-delta','kpi-today-delta','kpi-week-delta','kpi-rate-delta']
+      .forEach(id => { const el=document.getElementById(id); if(el) el.innerHTML=''; });
+  }
+}
+
+function renderDelta(id, diff, since, badWhenUp) {
+  const el = document.getElementById(id);
+  if (!el || diff === 0) { if(el) el.innerHTML=''; return; }
+  const up = diff > 0;
+  let cls;
+  if (badWhenUp) cls = up ? 'bad' : 'good';
+  else           cls = up ? 'neutral' : 'good';
+  const arrow = up ? '↑' : '↓';
+  const sign  = up ? '+' : '';
+  el.className = 'kpi-delta ' + cls;
+  el.innerHTML = `${arrow} ${sign}${fmt(Math.abs(diff))} ${since}`;
+}
+
+function renderRateDelta(id, diff, since) {
+  const el = document.getElementById(id);
+  if (!el || diff === 0) { if(el) el.innerHTML=''; return; }
+  const up  = diff > 0;
+  const cls = up ? 'good' : 'bad';
+  const arrow = up ? '↑' : '↓';
+  const sign  = up ? '+' : '';
+  el.className = 'kpi-delta ' + cls;
+  el.innerHTML = `${arrow} ${sign}${diff.toFixed(1)}% ${since}`;
 }
 
 // ── TIMELINE ──
