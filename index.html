@@ -522,8 +522,10 @@ function fmtDate(d) { return d ? d.toLocaleDateString('id-ID',{day:'2-digit',mon
 // ── DAILY SNAPSHOT (localStorage) ──
 const SNAP_KEY = 'arflow_snapshot';
 
+// Use local date string (not UTC) so midnight in WIB doesn't flip the day early
 function todayStr() {
-  return new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 
 function loadSnapshot() {
@@ -534,60 +536,49 @@ function saveSnapshot(data) {
   try { localStorage.setItem(SNAP_KEY, JSON.stringify(data)); } catch {}
 }
 
-// Save once per calendar day — first successful fetch of the day.
-// Subsequent fetches the same day do NOT overwrite the snapshot.
-function maybeSaveSnapshot(kpis) {
-  const snap = loadSnapshot();
-  if (!snap || snap.date !== todayStr()) {
-    saveSnapshot({ date: todayStr(), ...kpis });
-  }
-}
-
 // ── KPIs ──
 function renderKPIs() {
-  const total   = filteredData.reduce((s,r)=>s+r.Piutang,0);
-  const overdue = filteredData.filter(r=>r['Is Overdue?']).reduce((s,r)=>s+r.Piutang,0);
-  const today   = filteredData.filter(r=>r['Days Until Due']===0);
-  const week    = filteredData.filter(r=>r['Days Until Due']>=0&&r['Days Until Due']<=7);
-  const todayAmt = today.reduce((s,r)=>s+r.Piutang,0);
-  const weekAmt  = week.reduce((s,r)=>s+r.Piutang,0);
-  const rate    = total>0 ? parseFloat(((total-overdue)/total*100).toFixed(1)) : 0;
+  const total    = filteredData.reduce((s,r)=>s+r.Piutang,0);
+  const overdue  = filteredData.filter(r=>r['Is Overdue?']).reduce((s,r)=>s+r.Piutang,0);
+  const todayRows= filteredData.filter(r=>r['Days Until Due']===0);
+  const weekRows = filteredData.filter(r=>r['Days Until Due']>=0&&r['Days Until Due']<=7);
+  const todayAmt = todayRows.reduce((s,r)=>s+r.Piutang,0);
+  const weekAmt  = weekRows.reduce((s,r)=>s+r.Piutang,0);
+  const rate     = total>0 ? parseFloat(((total-overdue)/total*100).toFixed(1)) : 0;
 
-  document.getElementById('kpi-total').textContent    = fmt(total);
-  document.getElementById('kpi-total-sub').textContent = filteredData.length+' invoices';
-  document.getElementById('kpi-overdue').textContent   = fmt(overdue);
-  document.getElementById('kpi-overdue-sub').textContent = filteredData.filter(r=>r['Is Overdue?']).length+' invoices';
-  document.getElementById('kpi-today').textContent     = fmt(todayAmt);
-  document.getElementById('kpi-today-sub').textContent  = today.length+' invoices';
-  document.getElementById('kpi-week').textContent      = fmt(weekAmt);
-  document.getElementById('kpi-week-sub').textContent   = week.length+' invoices';
-  document.getElementById('kpi-rate').textContent      = rate+'%';
+  document.getElementById('kpi-total').textContent     = fmt(total);
+  document.getElementById('kpi-total-sub').textContent  = filteredData.length+' invoices';
+  document.getElementById('kpi-overdue').textContent    = fmt(overdue);
+  document.getElementById('kpi-overdue-sub').textContent= filteredData.filter(r=>r['Is Overdue?']).length+' invoices';
+  document.getElementById('kpi-today').textContent      = fmt(todayAmt);
+  document.getElementById('kpi-today-sub').textContent  = todayRows.length+' invoices';
+  document.getElementById('kpi-week').textContent       = fmt(weekAmt);
+  document.getElementById('kpi-week-sub').textContent   = weekRows.length+' invoices';
+  document.getElementById('kpi-rate').textContent       = rate+'%';
 
-  // Save snapshot (only on first fetch of the day)
-  const currentKpis = { total, overdue, todayAmt, weekAmt, rate };
-  maybeSaveSnapshot(currentKpis);
+  // ── SNAPSHOT LOGIC ──
+  // Load BEFORE deciding whether to save, so we have yesterday's data for deltas
+  const prevSnap = loadSnapshot();
+  const today    = todayStr();
 
-  // Render deltas vs previous day's snapshot
-  const snap = loadSnapshot();
-  // Only show delta if snapshot is from a previous day
-  if (snap && snap.date !== todayStr()) {
-    const snapDate = snap.date
-      ? new Date(snap.date).toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'})
-      : '';
+  // Only overwrite snapshot on first fetch of the day
+  if (!prevSnap || prevSnap.date !== today) {
+    saveSnapshot({ date: today, total, overdue, todayAmt, weekAmt, rate });
+  }
+
+  // Show deltas only if we have a snapshot from a PREVIOUS day
+  const deltaSnap = (prevSnap && prevSnap.date !== today) ? prevSnap : null;
+
+  if (deltaSnap) {
+    const snapDate = new Date(deltaSnap.date + 'T00:00:00')
+      .toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'});
     const since = `<span class="kpi-delta-date">since ${snapDate}</span>`;
-
-    // Total A/R — down = good (neutral either way, just show)
-    renderDelta('kpi-total-delta', total - snap.total, since, false);
-    // Overdue — down = good, up = bad
-    renderDelta('kpi-overdue-delta', overdue - snap.overdue, since, true);
-    // Due Today — neutral
-    renderDelta('kpi-today-delta', todayAmt - snap.todayAmt, since, false);
-    // Due This Week — neutral
-    renderDelta('kpi-week-delta', weekAmt - snap.weekAmt, since, false);
-    // Collection Rate — up = good, down = bad (inverted)
-    renderRateDelta('kpi-rate-delta', rate - snap.rate, since);
+    renderDelta('kpi-total-delta',   total    - (deltaSnap.total    ||0), since, false);
+    renderDelta('kpi-overdue-delta', overdue  - (deltaSnap.overdue  ||0), since, true);
+    renderDelta('kpi-today-delta',   todayAmt - (deltaSnap.todayAmt ||0), since, false);
+    renderDelta('kpi-week-delta',    weekAmt  - (deltaSnap.weekAmt  ||0), since, false);
+    renderRateDelta('kpi-rate-delta', rate    - (deltaSnap.rate     ||0), since);
   } else {
-    // Same day or no prior snapshot — clear deltas
     ['kpi-total-delta','kpi-overdue-delta','kpi-today-delta','kpi-week-delta','kpi-rate-delta']
       .forEach(id => { const el=document.getElementById(id); if(el) el.innerHTML=''; });
   }
