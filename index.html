@@ -520,20 +520,20 @@ function fmt(n) { return 'Rp\u00A0'+Math.round(n).toLocaleString('id-ID'); }
 function fmtDate(d) { return d ? d.toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'}) : '—'; }
 
 // ── DAILY SNAPSHOT (localStorage) ──
-const SNAP_KEY = 'arflow_snapshot';
+// Two localStorage keys:
+// SNAP_BASELINE — previous day's numbers, never overwritten during the same day
+// SNAP_TODAY    — today's date marker, just to know if we've already set the baseline today
+const SNAP_BASELINE = 'arflow_baseline';
+const SNAP_TODAY    = 'arflow_today';
 
-// Use local date string (not UTC) so midnight in WIB doesn't flip the day early
+// Local date string — avoids UTC timezone mismatch for WIB users
 function todayStr() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 
-function loadSnapshot() {
-  try { return JSON.parse(localStorage.getItem(SNAP_KEY)); } catch { return null; }
-}
-
-function saveSnapshot(data) {
-  try { localStorage.setItem(SNAP_KEY, JSON.stringify(data)); } catch {}
+function loadBaseline() {
+  try { return JSON.parse(localStorage.getItem(SNAP_BASELINE)); } catch { return null; }
 }
 
 // ── KPIs ──
@@ -557,28 +557,39 @@ function renderKPIs() {
   document.getElementById('kpi-rate').textContent       = rate+'%';
 
   // ── SNAPSHOT LOGIC ──
-  // Load BEFORE deciding whether to save, so we have yesterday's data for deltas
-  const prevSnap = loadSnapshot();
-  const today    = todayStr();
+  const today       = todayStr();
+  const lastSavedDay= localStorage.getItem(SNAP_TODAY);
+  const baseline    = loadBaseline();
 
-  // Only overwrite snapshot on first fetch of the day
-  if (!prevSnap || prevSnap.date !== today) {
-    saveSnapshot({ date: today, total, overdue, todayAmt, weekAmt, rate });
+  // First fetch of a new day:
+  // - Save current numbers as the new baseline (replacing previous day's)
+  // - Record today's date so subsequent refreshes don't overwrite it
+  if (lastSavedDay !== today) {
+    try {
+      localStorage.setItem(SNAP_BASELINE, JSON.stringify({
+        date: today, total, overdue, todayAmt, weekAmt, rate
+      }));
+      localStorage.setItem(SNAP_TODAY, today);
+    } catch {}
+    // No delta to show yet — this IS the new baseline
+    ['kpi-total-delta','kpi-overdue-delta','kpi-today-delta','kpi-week-delta','kpi-rate-delta']
+      .forEach(id => { const el=document.getElementById(id); if(el) el.innerHTML=''; });
+    return;
   }
 
-  // Show deltas only if we have a snapshot from a PREVIOUS day
-  const deltaSnap = (prevSnap && prevSnap.date !== today) ? prevSnap : null;
-
-  if (deltaSnap) {
-    const snapDate = new Date(deltaSnap.date + 'T00:00:00')
+  // Same day, subsequent refreshes — baseline stays untouched, show deltas against it
+  if (baseline && baseline.date !== today) {
+    // Baseline is from a previous day — show deltas
+    const snapDate = new Date(baseline.date + 'T00:00:00')
       .toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'});
     const since = `<span class="kpi-delta-date">since ${snapDate}</span>`;
-    renderDelta('kpi-total-delta',   total    - (deltaSnap.total    ||0), since, false);
-    renderDelta('kpi-overdue-delta', overdue  - (deltaSnap.overdue  ||0), since, true);
-    renderDelta('kpi-today-delta',   todayAmt - (deltaSnap.todayAmt ||0), since, false);
-    renderDelta('kpi-week-delta',    weekAmt  - (deltaSnap.weekAmt  ||0), since, false);
-    renderRateDelta('kpi-rate-delta', rate    - (deltaSnap.rate     ||0), since);
+    renderDelta('kpi-total-delta',   total    - (baseline.total    ||0), since, false);
+    renderDelta('kpi-overdue-delta', overdue  - (baseline.overdue  ||0), since, true);
+    renderDelta('kpi-today-delta',   todayAmt - (baseline.todayAmt ||0), since, false);
+    renderDelta('kpi-week-delta',    weekAmt  - (baseline.weekAmt  ||0), since, false);
+    renderRateDelta('kpi-rate-delta', rate    - (baseline.rate     ||0), since);
   } else {
+    // Baseline is from today (edge case: same day as baseline date) — no delta
     ['kpi-total-delta','kpi-overdue-delta','kpi-today-delta','kpi-week-delta','kpi-rate-delta']
       .forEach(id => { const el=document.getElementById(id); if(el) el.innerHTML=''; });
   }
