@@ -399,7 +399,7 @@ let channel = 'ALL', salesman = 'ALL', kpiFilter = 'all';
 let tblSm = 'ALL', tblSt = 'ALL', sortKey = 'Days Until Due', sortDir = 1, page = 0;
 const PAGE = 15;
 
-const SHEETS_URL = 'https://script.google.com/macros/s/AKfycbxVwoe6GJZ--eXfK4HbgsBd6C5p0N7zN4t89STZ3_yBpjPyDs8YQXG4TVNV8o5Wd4PMFQ/exec';
+const SHEETS_URL = 'https://script.google.com/macros/s/AKfycbxLEG9l7b9JKb4bzd31pzLVXiVgHDO-OFdxyC6U0wUNwU9FrHwGKwozyg-xCWbcREc8xA/exec';
 
 function fetchFromSheets() {
   document.getElementById('dashboard').style.display = 'none';
@@ -409,19 +409,27 @@ function fetchFromSheets() {
   document.getElementById('load-title').textContent = 'Loading data...';
   document.getElementById('load-sub').textContent = 'Fetching from Google Sheets';
 
-  fetch(SHEETS_URL)
-    .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
+  // 15 second timeout — if Google doesn't respond, fail gracefully
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
+
+  fetch(SHEETS_URL, { signal: controller.signal })
+    .then(r => { clearTimeout(timeout); if (!r.ok) throw new Error(r.status); return r.json(); })
     .then(payload => {
-      // Support both old array format and new {lastUpdated, rows} format
       const rows = Array.isArray(payload) ? payload : payload.rows;
       const lastUpdated = Array.isArray(payload) ? null : payload.lastUpdated;
       if (!rows?.length) throw new Error('Empty');
       processData(rows, lastUpdated);
     })
-    .catch(() => {
+    .catch(err => {
+      clearTimeout(timeout);
       sp.style.animation = 'none'; sp.style.display = 'none';
-      document.getElementById('load-title').textContent = 'Could not load data';
-      document.getElementById('load-sub').innerHTML = 'Failed to reach Google Sheets.<br><button class="retry-btn" onclick="fetchFromSheets()">↺ Retry</button>';
+      const isTimeout = err.name === 'AbortError';
+      document.getElementById('load-title').textContent = isTimeout ? 'Connection timed out' : 'Could not load data';
+      document.getElementById('load-sub').innerHTML = (isTimeout
+        ? 'Google Sheets took too long to respond.'
+        : 'Failed to reach Google Sheets.')
+        + '<br><button class="retry-btn" onclick="fetchFromSheets()">↺ Retry</button>';
     });
 }
 
