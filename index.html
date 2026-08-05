@@ -215,6 +215,29 @@ td { padding: 0.55rem 0.9rem; white-space: nowrap; }
 .b-14d     { background: var(--surface2); color: var(--muted); }
 .b-30d     { background: var(--green-light); color: var(--green); }
 
+/* ── SALES PERFORMANCE MTD ── */
+.sales-mtd-summary { display: flex; align-items: center; gap: 1.5rem; flex-wrap: wrap; }
+.sales-mtd-block { flex: 1; min-width: 160px; }
+.sales-mtd-label { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 0.4rem; }
+.sales-mtd-value { font-size: 1.5rem; font-weight: 800; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; color: var(--text); }
+.sales-mtd-sub { font-size: 0.75rem; color: var(--muted); margin-top: 0.25rem; }
+.sales-mtd-arrow { font-size: 1.3rem; color: var(--border-strong); flex-shrink: 0; }
+.sales-mtd-conv { text-align: right; padding-left: 1.5rem; border-left: 1.5px solid var(--border); flex-shrink: 0; }
+.sales-mtd-conv-pct { font-size: 1.3rem; font-weight: 800; color: var(--purple); letter-spacing: -0.03em; }
+.sales-mtd-conv-lbl { font-size: 0.7rem; color: var(--muted); margin-top: 0.2rem; }
+.sales-mtd-table-wrap { margin-top: 0; }
+.sms-row { display: flex; align-items: center; gap: 1rem; padding: 0.7rem 0; border-top: 1px solid var(--border); }
+.sms-name { width: 130px; flex-shrink: 0; font-weight: 700; font-size: 0.85rem; }
+.sms-bars { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+.sms-bar-row { display: flex; align-items: center; gap: 0.6rem; }
+.sms-bar-lbl { width: 46px; flex-shrink: 0; font-size: 0.65rem; color: var(--muted-light); text-transform: uppercase; letter-spacing: 0.04em; }
+.sms-bar-track { flex: 1; height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
+.sms-bar-fill { height: 100%; border-radius: 3px; transition: width 0.4s ease; }
+.sms-bar-fill.so  { background: var(--purple-mid); }
+.sms-bar-fill.inv { background: var(--green); }
+.sms-amt { width: 130px; text-align: right; font-size: 0.78rem; font-variant-numeric: tabular-nums; font-weight: 600; flex-shrink: 0; }
+.sms-conv { width: 60px; text-align: right; font-size: 0.85rem; font-weight: 700; font-variant-numeric: tabular-nums; flex-shrink: 0; }
+
 .no-data { text-align: center; color: var(--muted); padding: 2.5rem; font-size: 0.85rem; }
 .remark-inp {
   width: 100%; min-width: 160px;
@@ -300,14 +323,12 @@ td { padding: 0.55rem 0.9rem; white-space: nowrap; }
         <div class="kpi-label">Due Today</div>
         <div class="kpi-value" id="kpi-today">—</div>
         <div class="kpi-sub" id="kpi-today-sub">—</div>
-        <div class="kpi-delta" id="kpi-today-delta"></div>
         <div class="kpi-hint">Filter table ↓</div>
       </div>
       <div class="kpi-card k-good" id="kpi-card-week" onclick="setKpiFilter('week')">
         <div class="kpi-label">Due This Week</div>
         <div class="kpi-value" id="kpi-week">—</div>
         <div class="kpi-sub" id="kpi-week-sub">—</div>
-        <div class="kpi-delta" id="kpi-week-delta"></div>
         <div class="kpi-hint">Filter table ↓</div>
       </div>
       <div class="kpi-card k-neutral" style="cursor:default;">
@@ -318,9 +339,36 @@ td { padding: 0.55rem 0.9rem; white-space: nowrap; }
       </div>
     </div>
 
+    <!-- SALES PERFORMANCE (MTD) -->
+    <div class="section-label">Sales Performance (MTD)</div>
+    <div class="card" style="margin-bottom:0;">
+      <div class="sales-mtd-summary">
+        <div class="sales-mtd-block">
+          <div class="sales-mtd-label">Sales Orders</div>
+          <div class="sales-mtd-value" id="mtd-so-total">—</div>
+          <div class="sales-mtd-sub" id="mtd-so-count">—</div>
+        </div>
+        <div class="sales-mtd-arrow">→</div>
+        <div class="sales-mtd-block">
+          <div class="sales-mtd-label">Invoiced</div>
+          <div class="sales-mtd-value" id="mtd-inv-total">—</div>
+          <div class="sales-mtd-sub" id="mtd-inv-count">—</div>
+        </div>
+        <div class="sales-mtd-conv">
+          <div class="sales-mtd-conv-pct" id="mtd-conv-pct">—</div>
+          <div class="sales-mtd-conv-lbl">converted to invoice</div>
+        </div>
+      </div>
+      <div class="sales-mtd-table-wrap">
+        <div class="card-title" style="margin:1.3rem 0 0.9rem;">By Salesman</div>
+        <div id="sales-mtd-by-salesman"></div>
+      </div>
+    </div>
+
     <!-- 2. COLLECTION TIMELINE -->
     <div class="section-label">Money Coming In</div>
     <div class="timeline-grid" id="timeline-grid"></div>
+
 
     <!-- 3. BOTTOM: SCORECARD + CHANNEL -->
     <div class="section-label">Team Performance</div>
@@ -407,6 +455,7 @@ td { padding: 0.55rem 0.9rem; white-space: nowrap; }
 
 <script>
 let allData = [], filteredData = [];
+let allSalesOrders = [], allInvoicesMTD = [];
 let channel = 'ALL', salesman = 'ALL', kpiFilter = 'all';
 let tblSm = 'ALL', tblSt = 'ALL', sortKey = 'Days Until Due', sortDir = 1, page = 0;
 const PAGE = 15;
@@ -440,8 +489,10 @@ function attemptFetch(attempt) {
     .then(payload => {
       const rows = Array.isArray(payload) ? payload : payload.rows;
       const lastUpdated = Array.isArray(payload) ? null : payload.lastUpdated;
+      const salesOrders = Array.isArray(payload) ? [] : (payload.salesOrders || []);
+      const invoices = Array.isArray(payload) ? [] : (payload.invoices || []);
       if (!rows?.length) throw new Error('Empty');
-      processData(rows, lastUpdated);
+      processData(rows, lastUpdated, salesOrders, invoices);
     })
     .catch(err => {
       clearTimeout(timeout);
@@ -463,7 +514,7 @@ function attemptFetch(attempt) {
 
 window.addEventListener('load', fetchFromSheets);
 
-function processData(raw, lastUpdated) {
+function processData(raw, lastUpdated, salesOrders, invoices) {
   const today = new Date(); today.setHours(0,0,0,0);
   allData = raw.map(r => {
     const due = r['Jatuh Tempo'] ? new Date(r['Jatuh Tempo']) : null;
@@ -502,6 +553,20 @@ function processData(raw, lastUpdated) {
     + ', ' + tsDate.toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'});
   document.getElementById('data-date-lbl').textContent = tsLabel;
   buildSalesmanDropdowns();
+
+  // Normalize SO / Invoice rows for the Sales Performance MTD section
+  allSalesOrders = (salesOrders||[]).map(r => ({
+    Channel: String(r['Channel']||'').trim(),
+    Salesman: String(r['Salesman']||r['Salesmen']||'').trim(),
+    Total: parseFloat(r['Total'])||0,
+  })).filter(r => r.Total > 0);
+
+  allInvoicesMTD = (invoices||[]).map(r => ({
+    Channel: String(r['Channel']||'').trim(),
+    Salesman: String(r['Salesman']||r['Salesmen']||'').trim(),
+    Total: parseFloat(r['Total'])||0,
+  })).filter(r => r.Total > 0);
+
   document.getElementById('upload-screen').style.display = 'none';
   document.getElementById('dashboard').style.display = 'block';
   applyFilters();
@@ -549,7 +614,7 @@ function applyFilters() {
   page=0; renderAll();
 }
 
-function renderAll() { renderKPIs(); renderTimeline(); renderScorecard(); renderChannel(); renderAging(); renderTable(); }
+function renderAll() { renderKPIs(); renderSalesMTD(); renderTimeline(); renderScorecard(); renderChannel(); renderAging(); renderTable(); }
 
 // ── FORMATTERS ──
 function fmt(n) { return 'Rp\u00A0'+Math.round(n).toLocaleString('id-ID'); }
@@ -605,7 +670,7 @@ function renderKPIs() {
       }));
     } catch {}
     // No delta to show yet — this IS the new baseline for the month
-    ['kpi-total-delta','kpi-overdue-delta','kpi-today-delta','kpi-week-delta','kpi-rate-delta']
+    ['kpi-total-delta','kpi-overdue-delta','kpi-rate-delta']
       .forEach(id => { const el=document.getElementById(id); if(el) el.innerHTML=''; });
     return;
   }
@@ -616,8 +681,6 @@ function renderKPIs() {
   const since = `<span class="kpi-delta-date">since ${snapDate}</span>`;
   renderDelta('kpi-total-delta',   total    - (baseline.total    ||0), since, false);
   renderDelta('kpi-overdue-delta', overdue  - (baseline.overdue  ||0), since, true);
-  renderDelta('kpi-today-delta',   todayAmt - (baseline.todayAmt ||0), since, false);
-  renderDelta('kpi-week-delta',    weekAmt  - (baseline.weekAmt  ||0), since, false);
   renderRateDelta('kpi-rate-delta', rate    - (baseline.rate     ||0), since);
 }
 
@@ -646,6 +709,56 @@ function renderRateDelta(id, diff, since) {
 }
 
 // ── TIMELINE ──
+// ── SALES PERFORMANCE MTD ──
+function renderSalesMTD() {
+  // Respect existing Channel + Salesman filters
+  const soScope  = allSalesOrders.filter(r => (channel==='ALL'||r.Channel===channel) && (salesman==='ALL'||r.Salesman===salesman));
+  const invScope = allInvoicesMTD.filter(r => (channel==='ALL'||r.Channel===channel) && (salesman==='ALL'||r.Salesman===salesman));
+
+  const soTotal  = soScope.reduce((s,r)=>s+r.Total,0);
+  const invTotal = invScope.reduce((s,r)=>s+r.Total,0);
+  const convPct  = soTotal > 0 ? (invTotal/soTotal*100) : 0;
+
+  document.getElementById('mtd-so-total').textContent  = fmt(soTotal);
+  document.getElementById('mtd-so-count').textContent  = soScope.length+' orders';
+  document.getElementById('mtd-inv-total').textContent = fmt(invTotal);
+  document.getElementById('mtd-inv-count').textContent = invScope.length+' invoices';
+  document.getElementById('mtd-conv-pct').textContent  = convPct.toFixed(1)+'%';
+
+  // Per-salesman breakdown
+  const names = [...new Set([...soScope.map(r=>r.Salesman), ...invScope.map(r=>r.Salesman)])].filter(Boolean);
+  const rows = names.map(name => {
+    const so  = soScope.filter(r=>r.Salesman===name).reduce((s,r)=>s+r.Total,0);
+    const inv = invScope.filter(r=>r.Salesman===name).reduce((s,r)=>s+r.Total,0);
+    const pct = so > 0 ? (inv/so*100) : 0;
+    return { name, so, inv, pct };
+  }).sort((a,b) => b.so - a.so);
+
+  const maxVal = Math.max(...rows.map(r=>r.so), 1);
+
+  document.getElementById('sales-mtd-by-salesman').innerHTML = rows.length ? rows.map(r => {
+    const soPct  = r.so  / maxVal * 100;
+    const invPct = r.inv / maxVal * 100;
+    const pctColor = r.pct >= 80 ? 'var(--green)' : r.pct >= 50 ? 'var(--purple)' : 'var(--muted)';
+    return `<div class="sms-row">
+      <div class="sms-name">${r.name}</div>
+      <div class="sms-bars">
+        <div class="sms-bar-row">
+          <div class="sms-bar-lbl">SO</div>
+          <div class="sms-bar-track"><div class="sms-bar-fill so" style="width:${soPct}%"></div></div>
+        </div>
+        <div class="sms-bar-row">
+          <div class="sms-bar-lbl">Inv</div>
+          <div class="sms-bar-track"><div class="sms-bar-fill inv" style="width:${invPct}%"></div></div>
+        </div>
+      </div>
+      <div class="sms-amt">${fmt(r.so)} <span style="color:var(--muted-light);font-weight:400;">/ ${fmt(r.inv)}</span></div>
+      <div class="sms-conv" style="color:${pctColor}">${r.pct.toFixed(0)}%</div>
+    </div>`;
+  }).join('') : '<div class="no-data">No sales order data for this period</div>';
+}
+
+
 function renderTimeline() {
   const buckets = [
     { id:'overdue', cls:'tl-overdue', lbl:'Overdue',      f: r=>r['Is Overdue?'],                                   kpi:'overdue' },
