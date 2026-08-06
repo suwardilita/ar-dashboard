@@ -572,7 +572,9 @@ function processData(raw, lastUpdated, salesOrders, invoices) {
   })).filter(r => r.Total > 0);
 
   // Grab period label from whichever dataset has it (SO or Invoices)
-  mtdPeriodLabel = (allSalesOrders[0]?.Period) || (allInvoicesMTD[0]?.Period) || '';
+  // Sheets may auto-convert "Aug 2026" text into a real date — handle both cases
+  const rawPeriod = (allSalesOrders[0]?.Period) || (allInvoicesMTD[0]?.Period) || '';
+  mtdPeriodLabel = formatPeriodLabel(rawPeriod);
 
   document.getElementById('upload-screen').style.display = 'none';
   document.getElementById('dashboard').style.display = 'block';
@@ -626,6 +628,17 @@ function renderAll() { renderKPIs(); renderSalesMTD(); renderTimeline(); renderS
 // ── FORMATTERS ──
 function fmt(n) { return 'Rp\u00A0'+Math.round(n).toLocaleString('id-ID'); }
 function fmtDate(d) { return d ? d.toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'}) : '—'; }
+
+// Handles both plain text ("Aug 2026") and Sheets-auto-converted ISO dates
+function formatPeriodLabel(raw) {
+  if (!raw) return '';
+  const d = new Date(raw);
+  if (!isNaN(d.getTime()) && /^\d{4}-\d{2}-\d{2}/.test(String(raw))) {
+    // Looks like an ISO date — format as "Month Year"
+    return d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  }
+  return String(raw); // already plain text, leave as-is
+}
 
 // ── MONTHLY SNAPSHOT (localStorage) ──
 // Baseline is captured once at the start of each month (first fetch on/after the 1st)
