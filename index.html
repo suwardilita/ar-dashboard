@@ -64,6 +64,7 @@ body { background: var(--bg); color: var(--text); font-family: 'Plus Jakarta San
 .section-label { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted-light); margin-bottom: 0.75rem; margin-top: 1.75rem; display: flex; align-items: center; gap: 0.6rem; }
 .section-label:first-child { margin-top: 0; }
 .section-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+.mtd-period-badge { font-size: 0.65rem; font-weight: 600; color: var(--purple); background: var(--purple-light); padding: 0.15rem 0.5rem; border-radius: 4px; text-transform: none; letter-spacing: normal; }
 
 /* ── FILTER ROW ── */
 .filter-row { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 1.25rem; flex-wrap: wrap; background: var(--surface); border: 1.5px solid var(--border); border-radius: 10px; padding: 0.6rem 1rem; }
@@ -340,7 +341,7 @@ td { padding: 0.55rem 0.9rem; white-space: nowrap; }
     </div>
 
     <!-- SALES PERFORMANCE (MTD) -->
-    <div class="section-label">Sales Performance (MTD)</div>
+    <div class="section-label">Sales Performance (MTD) <span id="mtd-period-lbl" class="mtd-period-badge"></span></div>
     <div class="card" style="margin-bottom:0;">
       <div class="sales-mtd-summary">
         <div class="sales-mtd-block">
@@ -456,6 +457,7 @@ td { padding: 0.55rem 0.9rem; white-space: nowrap; }
 <script>
 let allData = [], filteredData = [];
 let allSalesOrders = [], allInvoicesMTD = [];
+let mtdPeriodLabel = '';
 let channel = 'ALL', salesman = 'ALL', kpiFilter = 'all';
 let tblSm = 'ALL', tblSt = 'ALL', sortKey = 'Days Until Due', sortDir = 1, page = 0;
 const PAGE = 15;
@@ -557,15 +559,20 @@ function processData(raw, lastUpdated, salesOrders, invoices) {
   // Normalize SO / Invoice rows for the Sales Performance MTD section
   allSalesOrders = (salesOrders||[]).map(r => ({
     Channel: String(r['Channel']||'').trim(),
+    Period: String(r['Period']||'').trim(),
     Salesman: String(r['Salesman']||r['Salesmen']||'').trim(),
     Total: parseFloat(r['Total'])||0,
   })).filter(r => r.Total > 0);
 
   allInvoicesMTD = (invoices||[]).map(r => ({
     Channel: String(r['Channel']||'').trim(),
+    Period: String(r['Period']||'').trim(),
     Salesman: String(r['Salesman']||r['Salesmen']||'').trim(),
     Total: parseFloat(r['Total'])||0,
   })).filter(r => r.Total > 0);
+
+  // Grab period label from whichever dataset has it (SO or Invoices)
+  mtdPeriodLabel = (allSalesOrders[0]?.Period) || (allInvoicesMTD[0]?.Period) || '';
 
   document.getElementById('upload-screen').style.display = 'none';
   document.getElementById('dashboard').style.display = 'block';
@@ -711,6 +718,8 @@ function renderRateDelta(id, diff, since) {
 // ── TIMELINE ──
 // ── SALES PERFORMANCE MTD ──
 function renderSalesMTD() {
+  document.getElementById('mtd-period-lbl').textContent = mtdPeriodLabel ? `Period: ${mtdPeriodLabel}` : '';
+
   // Respect existing Channel + Salesman filters
   const soScope  = allSalesOrders.filter(r => (channel==='ALL'||r.Channel===channel) && (salesman==='ALL'||r.Salesman===salesman));
   const invScope = allInvoicesMTD.filter(r => (channel==='ALL'||r.Channel===channel) && (salesman==='ALL'||r.Salesman===salesman));
