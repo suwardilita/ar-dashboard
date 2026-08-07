@@ -217,15 +217,15 @@ td { padding: 0.55rem 0.9rem; white-space: nowrap; }
 .b-30d     { background: var(--green-light); color: var(--green); }
 
 /* ── SALES PERFORMANCE MTD ── */
-.sales-mtd-summary { display: flex; align-items: center; gap: 1.5rem; flex-wrap: wrap; }
-.sales-mtd-block { flex: 1; min-width: 160px; }
+.sales-mtd-summary { display: flex; align-items: center; gap: 1.1rem; flex-wrap: wrap; }
+.sales-mtd-block { flex: 1; min-width: 140px; }
 .sales-mtd-label { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 0.4rem; }
-.sales-mtd-value { font-size: 1.5rem; font-weight: 800; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; color: var(--text); }
-.sales-mtd-sub { font-size: 0.75rem; color: var(--muted); margin-top: 0.25rem; }
-.sales-mtd-arrow { font-size: 1.3rem; color: var(--border-strong); flex-shrink: 0; }
-.sales-mtd-conv { text-align: right; padding-left: 1.5rem; border-left: 1.5px solid var(--border); flex-shrink: 0; }
-.sales-mtd-conv-pct { font-size: 1.3rem; font-weight: 800; color: var(--purple); letter-spacing: -0.03em; }
-.sales-mtd-conv-lbl { font-size: 0.7rem; color: var(--muted); margin-top: 0.2rem; }
+.sales-mtd-value { font-size: 1.3rem; font-weight: 800; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; color: var(--text); white-space: nowrap; }
+.sales-mtd-sub { font-size: 0.72rem; color: var(--muted); margin-top: 0.25rem; }
+.sales-mtd-arrow { font-size: 1.2rem; color: var(--border-strong); flex-shrink: 0; }
+.sales-mtd-conv { text-align: right; padding-left: 1.2rem; border-left: 1.5px solid var(--border); flex-shrink: 0; }
+.sales-mtd-conv-pct { font-size: 1.1rem; font-weight: 800; color: var(--purple); letter-spacing: -0.03em; }
+.sales-mtd-conv-lbl { font-size: 0.68rem; color: var(--muted); margin-top: 0.15rem; }
 .sales-mtd-table-wrap { margin-top: 0; }
 .sms-row { display: flex; align-items: center; gap: 1rem; padding: 0.7rem 0; border-top: 1px solid var(--border); }
 .sms-name { width: 130px; flex-shrink: 0; font-weight: 700; font-size: 0.85rem; }
@@ -355,9 +355,17 @@ td { padding: 0.55rem 0.9rem; white-space: nowrap; }
           <div class="sales-mtd-value" id="mtd-inv-total">—</div>
           <div class="sales-mtd-sub" id="mtd-inv-count">—</div>
         </div>
+        <div class="sales-mtd-arrow">→</div>
+        <div class="sales-mtd-block">
+          <div class="sales-mtd-label">Paid</div>
+          <div class="sales-mtd-value" id="mtd-paid-total" style="color:var(--green)">—</div>
+          <div class="sales-mtd-sub" id="mtd-paid-count">—</div>
+        </div>
         <div class="sales-mtd-conv">
           <div class="sales-mtd-conv-pct" id="mtd-conv-pct">—</div>
           <div class="sales-mtd-conv-lbl">converted to invoice</div>
+          <div class="sales-mtd-conv-pct" id="mtd-paid-pct" style="margin-top:0.5rem;color:var(--green);">—</div>
+          <div class="sales-mtd-conv-lbl">of invoiced is paid</div>
         </div>
       </div>
       <div class="sales-mtd-table-wrap">
@@ -568,6 +576,7 @@ function processData(raw, lastUpdated, salesOrders, invoices) {
     Channel: String(r['Channel']||'').trim(),
     Period: String(r['Period']||'').trim(),
     Salesman: String(r['Salesman']||r['Salesmen']||'').trim(),
+    InvoiceNo: String(r['No. Invoice']||'').trim(),
     Total: parseFloat(r['Total'])||0,
   })).filter(r => r.Total > 0);
 
@@ -746,6 +755,16 @@ function renderSalesMTD() {
   document.getElementById('mtd-inv-total').textContent = fmt(invTotal);
   document.getElementById('mtd-inv-count').textContent = invScope.length+' invoices';
   document.getElementById('mtd-conv-pct').textContent  = convPct.toFixed(1)+'%';
+
+  // Paid = invoices this month whose invoice number no longer appears in outstanding AR (Append1)
+  const outstandingNos = new Set(allData.map(r => r['Nomor #']));
+  const paidRows = invScope.filter(r => r.InvoiceNo && !outstandingNos.has(r.InvoiceNo));
+  const paidTotal = paidRows.reduce((s,r)=>s+r.Total,0);
+  const paidPct = invTotal > 0 ? (paidTotal/invTotal*100) : 0;
+
+  document.getElementById('mtd-paid-total').textContent = fmt(paidTotal);
+  document.getElementById('mtd-paid-count').textContent = paidRows.length+' invoices';
+  document.getElementById('mtd-paid-pct').textContent   = paidPct.toFixed(1)+'%';
 
   // Per-salesman breakdown
   const names = [...new Set([...soScope.map(r=>r.Salesman), ...invScope.map(r=>r.Salesman)])].filter(Boolean);
