@@ -64,7 +64,6 @@ body { background: var(--bg); color: var(--text); font-family: 'Plus Jakarta San
 .section-label { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted-light); margin-bottom: 0.75rem; margin-top: 1.75rem; display: flex; align-items: center; gap: 0.6rem; }
 .section-label:first-child { margin-top: 0; }
 .section-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
-.mtd-period-badge { font-size: 0.65rem; font-weight: 600; color: var(--purple); background: var(--purple-light); padding: 0.15rem 0.5rem; border-radius: 4px; text-transform: none; letter-spacing: normal; }
 
 /* ── FILTER ROW ── */
 .filter-row { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 1.25rem; flex-wrap: wrap; background: var(--surface); border: 1.5px solid var(--border); border-radius: 10px; padding: 0.6rem 1rem; }
@@ -216,29 +215,6 @@ td { padding: 0.55rem 0.9rem; white-space: nowrap; }
 .b-14d     { background: var(--surface2); color: var(--muted); }
 .b-30d     { background: var(--green-light); color: var(--green); }
 
-/* ── SALES PERFORMANCE MTD ── */
-.sales-mtd-summary { display: flex; align-items: center; gap: 1.1rem; flex-wrap: wrap; }
-.sales-mtd-block { flex: 1; min-width: 140px; }
-.sales-mtd-label { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 0.4rem; }
-.sales-mtd-value { font-size: 1.3rem; font-weight: 800; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; color: var(--text); white-space: nowrap; }
-.sales-mtd-sub { font-size: 0.72rem; color: var(--muted); margin-top: 0.25rem; }
-.sales-mtd-arrow { font-size: 1.2rem; color: var(--border-strong); flex-shrink: 0; }
-.sales-mtd-conv { text-align: right; padding-left: 1.2rem; border-left: 1.5px solid var(--border); flex-shrink: 0; }
-.sales-mtd-conv-pct { font-size: 1.1rem; font-weight: 800; color: var(--purple); letter-spacing: -0.03em; }
-.sales-mtd-conv-lbl { font-size: 0.68rem; color: var(--muted); margin-top: 0.15rem; }
-.sales-mtd-table-wrap { margin-top: 0; }
-.sms-row { display: flex; align-items: center; gap: 1rem; padding: 0.7rem 0; border-top: 1px solid var(--border); }
-.sms-name { width: 130px; flex-shrink: 0; font-weight: 700; font-size: 0.85rem; }
-.sms-bars { flex: 1; display: flex; flex-direction: column; gap: 4px; }
-.sms-bar-row { display: flex; align-items: center; gap: 0.6rem; }
-.sms-bar-lbl { width: 46px; flex-shrink: 0; font-size: 0.65rem; color: var(--muted-light); text-transform: uppercase; letter-spacing: 0.04em; }
-.sms-bar-track { flex: 1; height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
-.sms-bar-fill { height: 100%; border-radius: 3px; transition: width 0.4s ease; }
-.sms-bar-fill.so  { background: var(--purple-mid); }
-.sms-bar-fill.inv { background: var(--green); }
-.sms-amt { width: 130px; text-align: right; font-size: 0.78rem; font-variant-numeric: tabular-nums; font-weight: 600; flex-shrink: 0; }
-.sms-conv { width: 60px; text-align: right; font-size: 0.85rem; font-weight: 700; font-variant-numeric: tabular-nums; flex-shrink: 0; }
-
 .no-data { text-align: center; color: var(--muted); padding: 2.5rem; font-size: 0.85rem; }
 .remark-inp {
   width: 100%; min-width: 160px;
@@ -340,40 +316,6 @@ td { padding: 0.55rem 0.9rem; white-space: nowrap; }
       </div>
     </div>
 
-    <!-- SALES PERFORMANCE (MTD) -->
-    <div class="section-label">Sales Performance (MTD) <span id="mtd-period-lbl" class="mtd-period-badge"></span></div>
-    <div class="card" style="margin-bottom:0;">
-      <div class="sales-mtd-summary">
-        <div class="sales-mtd-block">
-          <div class="sales-mtd-label">Sales Orders</div>
-          <div class="sales-mtd-value" id="mtd-so-total">—</div>
-          <div class="sales-mtd-sub" id="mtd-so-count">—</div>
-        </div>
-        <div class="sales-mtd-arrow">→</div>
-        <div class="sales-mtd-block">
-          <div class="sales-mtd-label">Invoiced</div>
-          <div class="sales-mtd-value" id="mtd-inv-total">—</div>
-          <div class="sales-mtd-sub" id="mtd-inv-count">—</div>
-        </div>
-        <div class="sales-mtd-arrow">→</div>
-        <div class="sales-mtd-block">
-          <div class="sales-mtd-label">Paid</div>
-          <div class="sales-mtd-value" id="mtd-paid-total" style="color:var(--green)">—</div>
-          <div class="sales-mtd-sub" id="mtd-paid-count">—</div>
-        </div>
-        <div class="sales-mtd-conv">
-          <div class="sales-mtd-conv-pct" id="mtd-conv-pct">—</div>
-          <div class="sales-mtd-conv-lbl">converted to invoice</div>
-          <div class="sales-mtd-conv-pct" id="mtd-paid-pct" style="margin-top:0.5rem;color:var(--green);">—</div>
-          <div class="sales-mtd-conv-lbl">of invoiced is paid</div>
-        </div>
-      </div>
-      <div class="sales-mtd-table-wrap">
-        <div class="card-title" style="margin:1.3rem 0 0.9rem;">By Salesman</div>
-        <div id="sales-mtd-by-salesman"></div>
-      </div>
-    </div>
-
     <!-- 2. COLLECTION TIMELINE -->
     <div class="section-label">Money Coming In</div>
     <div class="timeline-grid" id="timeline-grid"></div>
@@ -464,8 +406,6 @@ td { padding: 0.55rem 0.9rem; white-space: nowrap; }
 
 <script>
 let allData = [], filteredData = [];
-let allSalesOrders = [], allInvoicesMTD = [];
-let mtdPeriodLabel = '';
 let channel = 'ALL', salesman = 'ALL', kpiFilter = 'all';
 let tblSm = 'ALL', tblSt = 'ALL', sortKey = 'Days Until Due', sortDir = 1, page = 0;
 const PAGE = 15;
@@ -499,10 +439,8 @@ function attemptFetch(attempt) {
     .then(payload => {
       const rows = Array.isArray(payload) ? payload : payload.rows;
       const lastUpdated = Array.isArray(payload) ? null : payload.lastUpdated;
-      const salesOrders = Array.isArray(payload) ? [] : (payload.salesOrders || []);
-      const invoices = Array.isArray(payload) ? [] : (payload.invoices || []);
       if (!rows?.length) throw new Error('Empty');
-      processData(rows, lastUpdated, salesOrders, invoices);
+      processData(rows, lastUpdated);
     })
     .catch(err => {
       clearTimeout(timeout);
@@ -524,7 +462,7 @@ function attemptFetch(attempt) {
 
 window.addEventListener('load', fetchFromSheets);
 
-function processData(raw, lastUpdated, salesOrders, invoices) {
+function processData(raw, lastUpdated) {
   const today = new Date(); today.setHours(0,0,0,0);
   allData = raw.map(r => {
     const due = r['Jatuh Tempo'] ? new Date(r['Jatuh Tempo']) : null;
@@ -563,27 +501,6 @@ function processData(raw, lastUpdated, salesOrders, invoices) {
     + ', ' + tsDate.toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'});
   document.getElementById('data-date-lbl').textContent = tsLabel;
   buildSalesmanDropdowns();
-
-  // Normalize SO / Invoice rows for the Sales Performance MTD section
-  allSalesOrders = (salesOrders||[]).map(r => ({
-    Channel: String(r['Channel']||'').trim(),
-    Period: String(r['Period']||'').trim(),
-    Salesman: String(r['Salesman']||r['Salesmen']||'').trim(),
-    Total: parseFloat(r['Total'])||0,
-  })).filter(r => r.Total > 0);
-
-  allInvoicesMTD = (invoices||[]).map(r => ({
-    Channel: String(r['Channel']||'').trim(),
-    Period: String(r['Period']||'').trim(),
-    Salesman: String(r['Salesman']||r['Salesmen']||'').trim(),
-    InvoiceNo: String(r['No. Invoice']||'').trim(),
-    Total: parseFloat(r['Total'])||0,
-  })).filter(r => r.Total > 0);
-
-  // Grab period label from whichever dataset has it (SO or Invoices)
-  // Sheets may auto-convert "Aug 2026" text into a real date — handle both cases
-  const rawPeriod = (allSalesOrders[0]?.Period) || (allInvoicesMTD[0]?.Period) || '';
-  mtdPeriodLabel = formatPeriodLabel(rawPeriod);
 
   document.getElementById('upload-screen').style.display = 'none';
   document.getElementById('dashboard').style.display = 'block';
@@ -632,22 +549,11 @@ function applyFilters() {
   page=0; renderAll();
 }
 
-function renderAll() { renderKPIs(); renderSalesMTD(); renderTimeline(); renderScorecard(); renderChannel(); renderAging(); renderTable(); }
+function renderAll() { renderKPIs(); renderTimeline(); renderScorecard(); renderChannel(); renderAging(); renderTable(); }
 
 // ── FORMATTERS ──
 function fmt(n) { return 'Rp\u00A0'+Math.round(n).toLocaleString('id-ID'); }
 function fmtDate(d) { return d ? d.toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'}) : '—'; }
-
-// Handles both plain text ("Aug 2026") and Sheets-auto-converted ISO dates
-function formatPeriodLabel(raw) {
-  if (!raw) return '';
-  const d = new Date(raw);
-  if (!isNaN(d.getTime()) && /^\d{4}-\d{2}-\d{2}/.test(String(raw))) {
-    // Looks like an ISO date — format as "Month Year"
-    return d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-  }
-  return String(raw); // already plain text, leave as-is
-}
 
 // ── MONTHLY SNAPSHOT (localStorage) ──
 // Baseline is captured once at the start of each month (first fetch on/after the 1st)
@@ -738,68 +644,6 @@ function renderRateDelta(id, diff, since) {
 }
 
 // ── TIMELINE ──
-// ── SALES PERFORMANCE MTD ──
-function renderSalesMTD() {
-  document.getElementById('mtd-period-lbl').textContent = mtdPeriodLabel ? `Period: ${mtdPeriodLabel}` : '';
-
-  // Respect existing Channel + Salesman filters
-  const soScope  = allSalesOrders.filter(r => (channel==='ALL'||r.Channel===channel) && (salesman==='ALL'||r.Salesman===salesman));
-  const invScope = allInvoicesMTD.filter(r => (channel==='ALL'||r.Channel===channel) && (salesman==='ALL'||r.Salesman===salesman));
-
-  const soTotal  = soScope.reduce((s,r)=>s+r.Total,0);
-  const invTotal = invScope.reduce((s,r)=>s+r.Total,0);
-  const convPct  = soTotal > 0 ? (invTotal/soTotal*100) : 0;
-
-  document.getElementById('mtd-so-total').textContent  = fmt(soTotal);
-  document.getElementById('mtd-so-count').textContent  = soScope.length+' orders';
-  document.getElementById('mtd-inv-total').textContent = fmt(invTotal);
-  document.getElementById('mtd-inv-count').textContent = invScope.length+' invoices';
-  document.getElementById('mtd-conv-pct').textContent  = convPct.toFixed(1)+'%';
-
-  // Paid = invoices this month whose invoice number no longer appears in outstanding AR (Append1)
-  const outstandingNos = new Set(allData.map(r => r['Nomor #']));
-  const paidRows = invScope.filter(r => r.InvoiceNo && !outstandingNos.has(r.InvoiceNo));
-  const paidTotal = paidRows.reduce((s,r)=>s+r.Total,0);
-  const paidPct = invTotal > 0 ? (paidTotal/invTotal*100) : 0;
-
-  document.getElementById('mtd-paid-total').textContent = fmt(paidTotal);
-  document.getElementById('mtd-paid-count').textContent = paidRows.length+' invoices';
-  document.getElementById('mtd-paid-pct').textContent   = paidPct.toFixed(1)+'%';
-
-  // Per-salesman breakdown
-  const names = [...new Set([...soScope.map(r=>r.Salesman), ...invScope.map(r=>r.Salesman)])].filter(Boolean);
-  const rows = names.map(name => {
-    const so  = soScope.filter(r=>r.Salesman===name).reduce((s,r)=>s+r.Total,0);
-    const inv = invScope.filter(r=>r.Salesman===name).reduce((s,r)=>s+r.Total,0);
-    const pct = so > 0 ? (inv/so*100) : 0;
-    return { name, so, inv, pct };
-  }).sort((a,b) => b.so - a.so);
-
-  const maxVal = Math.max(...rows.map(r=>r.so), 1);
-
-  document.getElementById('sales-mtd-by-salesman').innerHTML = rows.length ? rows.map(r => {
-    const soPct  = r.so  / maxVal * 100;
-    const invPct = r.inv / maxVal * 100;
-    const pctColor = r.pct >= 80 ? 'var(--green)' : r.pct >= 50 ? 'var(--purple)' : 'var(--muted)';
-    return `<div class="sms-row">
-      <div class="sms-name">${r.name}</div>
-      <div class="sms-bars">
-        <div class="sms-bar-row">
-          <div class="sms-bar-lbl">SO</div>
-          <div class="sms-bar-track"><div class="sms-bar-fill so" style="width:${soPct}%"></div></div>
-        </div>
-        <div class="sms-bar-row">
-          <div class="sms-bar-lbl">Inv</div>
-          <div class="sms-bar-track"><div class="sms-bar-fill inv" style="width:${invPct}%"></div></div>
-        </div>
-      </div>
-      <div class="sms-amt">${fmt(r.so)} <span style="color:var(--muted-light);font-weight:400;">/ ${fmt(r.inv)}</span></div>
-      <div class="sms-conv" style="color:${pctColor}">${r.pct.toFixed(0)}%</div>
-    </div>`;
-  }).join('') : '<div class="no-data">No sales order data for this period</div>';
-}
-
-
 function renderTimeline() {
   const buckets = [
     { id:'overdue', cls:'tl-overdue', lbl:'Overdue',      f: r=>r['Is Overdue?'],                                   kpi:'overdue' },
