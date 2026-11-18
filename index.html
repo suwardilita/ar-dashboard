@@ -74,7 +74,7 @@ body { background: var(--bg); color: var(--text); font-family: 'Plus Jakarta San
 .ch-tab[data-ch="ALL"].active  { border-color: var(--border-strong); color: var(--text); background: var(--surface2); }
 .ch-tab[data-ch="OSA"].active  { border-color: var(--purple-mid); color: var(--purple); background: var(--purple-light); }
 .ch-tab[data-ch="SESA"].active { border-color: var(--gray-ch); color: var(--text); background: var(--gray-ch-light); }
-.ch-tab[data-ch="MSO"].active  { border-color: var(--green-mid); color: var(--green); background: var(--green-light); }
+.ch-tab[data-ch="NNN"].active  { border-color: var(--green-mid); color: var(--green); background: var(--green-light); }
 .sm-select { background: var(--surface2); border: 1.5px solid var(--border); color: var(--text); padding: 0.3rem 0.8rem; border-radius: 6px; font-family: inherit; font-size: 0.82rem; font-weight: 500; cursor: pointer; outline: none; transition: border-color 0.15s; margin-left: auto; }
 .sm-select:focus { border-color: var(--purple); }
 .sm-select.filtered { border-color: var(--purple); color: var(--purple); }
@@ -154,7 +154,7 @@ body { background: var(--bg); color: var(--text); font-family: 'Plus Jakarta San
 .ch-pip { font-size: 0.6rem; font-weight: 700; padding: 0.1rem 0.35rem; border-radius: 3px; }
 .ch-pip.osa  { background: var(--purple-light); color: var(--purple); }
 .ch-pip.sesa { background: var(--gray-ch-light); color: var(--text); }
-.ch-pip.mso  { background: var(--green-light); color: var(--green); }
+.ch-pip.nnn  { background: var(--green-light); color: var(--green); }
 .sc-bar-wrap { flex: 1; position: relative; }
 .sc-track { height: 7px; background: var(--border); border-radius: 4px; overflow: visible; position: relative; }
 .sc-fill { height: 100%; border-radius: 4px; transition: width 0.5s ease; }
@@ -271,7 +271,7 @@ td { padding: 0.55rem 0.9rem; white-space: nowrap; }
       <button class="ch-tab active" data-ch="ALL" onclick="setChannel('ALL')">All</button>
       <button class="ch-tab" data-ch="OSA"  onclick="setChannel('OSA')">OSA</button>
       <button class="ch-tab" data-ch="SESA" onclick="setChannel('SESA')">SESA</button>
-      <button class="ch-tab" data-ch="MSO"  onclick="setChannel('MSO')">MSO</button>
+      <button class="ch-tab" data-ch="NNN"  onclick="setChannel('NNN')">NNN</button>
       <div class="filter-divider"></div>
       <span class="filter-label">Salesman</span>
       <select class="sm-select" id="salesman-select" onchange="setSalesman(this.value)">
@@ -790,8 +790,8 @@ function renderScorecard() {
 
 // ── CHANNEL BREAKDOWN ──
 function renderChannel() {
-  const cols = { OSA:'var(--purple)', SESA:'var(--gray-ch)', MSO:'var(--green)' };
-  const data = ['OSA','SESA','MSO'].map(c => {
+  const cols = { OSA:'var(--purple)', SESA:'var(--gray-ch)', NNN:'var(--green)' };
+  const data = ['OSA','SESA','NNN'].map(c => {
     const rows   = allData.filter(r=>r.Channel===c);
     const total  = rows.reduce((s,r)=>s+r.Piutang,0);
     const overdue= rows.filter(r=>r['Is Overdue?']).reduce((s,r)=>s+r.Piutang,0);
